@@ -1,4 +1,4 @@
-package com.exactpro.th2.codec.pipelineCodec;
+package com.exactpro.th2.codec.qfj;
 
 import com.exactpro.th2.codec.api.IPipelineCodec;
 import com.exactpro.th2.codec.api.IPipelineCodecContext;
@@ -45,8 +45,8 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
     @Override
     public void init(@NotNull IPipelineCodecContext codecContext) {
 
-        try { //for testing purposes
-            dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
+        try {
+//            dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
             transportDataDictionary = new DataDictionary((codecContext.get(DictionaryType.LEVEL1)));
             appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL2));
 

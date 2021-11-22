@@ -2,10 +2,15 @@ plugins {
     id 'java'
     id 'application'
     id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
+    id 'com.palantir.docker' version '0.25.0'
 }
 
-group 'org.example'
-version '1.0-SNAPSHOT'
+apply plugin: 'application'
+apply plugin: 'com.palantir.docker'
+
+group 'org.exactpro.th2'
+version release_version
 
 repositories {
     mavenCentral()
@@ -21,7 +26,6 @@ dependencies {
     implementation 'com.exactpro.th2:codec:4.1.1'
 
     implementation 'com.exactpro.th2:common:3.23.0'
-    implementation 'com.exactpro.th2:grpc-conn:0.0.1'
 
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.31'
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
@@ -32,8 +36,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-all:1.10.19'
     testImplementation 'org.junit.platform:junit-platform-commons:1.5.2'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
@@ -47,11 +50,29 @@ application {
 }
 compileKotlin {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 }
 compileTestKotlin {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
+}
+
+applicationName = 'service'
+
+distTar {
+    archiveName "${applicationName}.tar"
+}
+
+dockerPrepare {
+    dependsOn distTar
+}
+
+docker {
+    copySpec.from(tarTree("$buildDir/distributions/${applicationName}.tar"))
+}
+
+serviceLoader {
+    serviceInterface 'com.exactpro.th2.codec.api.IPipelineCodecFactory'
 }

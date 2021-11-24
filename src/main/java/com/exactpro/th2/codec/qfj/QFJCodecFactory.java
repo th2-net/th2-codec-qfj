@@ -38,8 +38,7 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
 
     @Override
     public  @NotNull IPipelineCodec create(@Nullable IPipelineCodecSettings settings) {
-        return new QFJCodec(Objects.requireNonNull((QFJCodecSettings)settings,() -> "settings is not an instance of " + QFJCodecSettings.class.getSimpleName() + " : " + settings),
-                dataDictionary, transportDataDictionary, appDataDictionary);
+        return new QFJCodec(settings, dataDictionary, transportDataDictionary, appDataDictionary);
     }
 
     @Override

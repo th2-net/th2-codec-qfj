@@ -289,7 +289,7 @@ public class QFJCodec implements IPipelineCodec {
                                 try {
                                     return AnyMessage.newBuilder().setMessage(decodeMessage(anyMsg.getRawMessage())).build();
                                 } catch (Exception e) {
-                                    throw new IllegalStateException("Cannot decode message " + toJson(anyMsg.getRawMessage()));
+                                    throw new IllegalStateException("Cannot decode message " + toJson(anyMsg.getRawMessage()), e);
                                 }
                             } else {
                                 return anyMsg;
@@ -319,11 +319,11 @@ public class QFJCodec implements IPipelineCodec {
 
         Map<String, Value> fieldsMap = new TreeMap<>();
 
-        String msgType = "";
+        String msgType;
         try {
             msgType = qfjMessage.getHeader().getString(MsgType.FIELD);
         } catch (FieldNotFound fieldNotFound) {
-            LOGGER.error("Cannot find message type in message: {}", qfjMessage);
+            throw new IllegalArgumentException("Cannot find message type in message: " + qfjMessage, fieldNotFound);
         }
 
         Iterator<Field<?>> headerIterator = qfjMessage.getHeader().iterator();
@@ -364,6 +364,9 @@ public class QFJCodec implements IPipelineCodec {
                 fillListValue(listValue, innerDataDictionary, groups, msgType);
                 fieldsMap.put(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
             } else {
+                if (!localDataDictionary.isMsgField(msgType, field.getField())){
+                    throw new IllegalArgumentException("Invalid tag \"" + localDataDictionary.getFieldName(field.getField()) + "\" for message type " + msgType);
+                }
                 putField(localDataDictionary, fieldsMap, field);
             }
         }
@@ -379,7 +382,6 @@ public class QFJCodec implements IPipelineCodec {
         }
     }
 
-    //ADDING BODY TO MESSAGE
     private Message getMessage(Iterator<Field<?>> iterator, Message.Builder messageBuilder, DataDictionary dataDictionary, Group group, String msgType) {
 
         while (iterator.hasNext()) {
@@ -395,6 +397,9 @@ public class QFJCodec implements IPipelineCodec {
                 fillListValue(listValue, innerDataDictionary, groups, msgType);
                 messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
             } else {
+                if (!group.isSetField(field.getField())){
+                    throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + group);
+                }
                 putMessageField(messageBuilder, localDataDictionary, field);
             }
         }

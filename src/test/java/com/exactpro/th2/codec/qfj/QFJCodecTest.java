@@ -20,7 +20,9 @@ import quickfix.ConfigError;
 import quickfix.DataDictionary;
 import quickfix.Group;
 import quickfix.field.BeginString;
+import quickfix.field.HopCompID;
 import quickfix.field.MsgType;
+import quickfix.field.NoHops;
 import quickfix.field.NoPartyIDs;
 import quickfix.field.NoSides;
 import quickfix.field.PartyID;
@@ -41,6 +43,7 @@ public class QFJCodecTest {
 
     private static QFJCodec codec;
     private static MessageGroup messageGroup;
+    private static MessageGroup messageGroupNoHeader;
     private static long timestampSeconds;
     private static int timestampNano;
     private static MessageGroup rawMessageGroup;
@@ -60,6 +63,16 @@ public class QFJCodecTest {
         fixMessage.getHeader().setField(new SenderCompID("client"));
         fixMessage.getHeader().setField(new TargetCompID("server"));
         fixMessage.getHeader().setField(new MsgType("AE"));
+
+        //ADDING HEADER GROUPS
+        Group headerGroup = new Group(new NoHops().getField(), new HopCompID().getField());
+        headerGroup.setField(new HopCompID("1"));
+
+        Group headerGroup2 = new Group(new NoHops().getField(), new HopCompID().getField());
+        headerGroup2.setField(new HopCompID("2"));
+
+        fixMessage.getHeader().addGroup(headerGroup);
+        fixMessage.getHeader().addGroup(headerGroup2);
 
 
         Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());
@@ -136,6 +149,20 @@ public class QFJCodecTest {
                         .putFields("TargetCompID", Value.newBuilder().setSimpleValue("server").build())
                         .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
                         .putFields("MsgType", Value.newBuilder().setSimpleValue("AE").build())
+                        .putFields("NoHops", Value.newBuilder()
+                                .setListValue(ListValue.newBuilder()
+                                        .addValues(Value.newBuilder()
+                                                .setMessageValue(Message.newBuilder()
+                                                        .putFields("HopCompID", Value.newBuilder().setSimpleValue("1").build())
+                                                        .build())
+                                                .build())
+                                        .addValues(Value.newBuilder()
+                                                .setMessageValue(Message.newBuilder()
+                                                        .putFields("HopCompID", Value.newBuilder().setSimpleValue("2").build())
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build())
                         .build())
                 .build());
         fieldsMap.put("NoSides", Value.newBuilder()
@@ -217,16 +244,72 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build();
+
+        //INITIATING MESSAGE WITHOUT HEADER
+        Map<String, Value> fieldsMapNoHeader = new TreeMap<>();
+        fieldsMapNoHeader.put("NoSides", Value.newBuilder()
+                .setListValue(ListValue.newBuilder()
+                        .addValues(Value.newBuilder()
+                                .setMessageValue(Message.newBuilder()
+                                        .putFields("Side", Value.newBuilder().setSimpleValue("1").build())
+                                        .putFields("NoPartyIDs", Value.newBuilder()
+                                                .setListValue(ListValue.newBuilder()
+                                                        .addValues(Value.newBuilder()
+                                                                .setMessageValue(Message.newBuilder()
+                                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party1").build())
+                                                                        .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
+                                                                        .putFields("PartyRole", Value.newBuilder().setSimpleValue("11").build())
+                                                                        .build())
+                                                                .build())
+                                                        .addValues(Value.newBuilder()
+                                                                .setMessageValue(Message.newBuilder()
+                                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party2").build())
+                                                                        .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
+                                                                        .putFields("PartyRole", Value.newBuilder().setSimpleValue("56").build())
+                                                                        .build())
+                                                                .build())
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+
+        messageGroupNoHeader = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setMessage(Message.newBuilder()
+                                .putAllFields(fieldsMapNoHeader)
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .setMetadata(MessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setMessageType("TradeCaptureReport")
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
     }
 
     @BeforeAll
     private static void initQFJCodec() throws ConfigError {
         codec = new QFJCodec(new QFJCodecSettings(),null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
-//        codec = new QFJCodec(new QFJCodecSettings(), new DataDictionary("src/main/resources/FIX44.xml"));
+//        codec = new QFJCodec(new QFJCodecSettings(), new DataDictionary("src/test/resources/FIX44.xml"), null, null);
+
     }
 
     @Test
     public void encodeTest() {
+
         MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
                 .addMessages(AnyMessage.newBuilder()
                         .setRawMessage(RawMessage.newBuilder()
@@ -251,6 +334,59 @@ public class QFJCodecTest {
                 .build();
 
         MessageGroup messageGroupResult = codec.encode(messageGroup);
+        assertEquals(messageGroupResult, expectedMessageGroup);
+    }
+    @Test
+    public void encodeMessageWithoutHeaderTest() {
+
+        quickfix.Message message = new quickfix.Message();
+        message.getHeader().setField(new BeginString("FIX.5.0"));
+//        message.getHeader().setField(new BeginString("FIX.4.4"));
+        message.getHeader().setField(new MsgType("AE"));
+
+        Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());
+        noSidesGr1.setField(new Side('1'));
+
+        Group noPartyIDsGr1 = new Group(new NoPartyIDs().getField(), new PartyID().getField());
+        noPartyIDsGr1.setField(new PartyID("party1"));
+        noPartyIDsGr1.setField(new PartyIDSource('D'));
+        noPartyIDsGr1.setField(new PartyRole(11));
+
+        Group noPartyIDsGr2 = new Group(new NoPartyIDs().getField(), new PartyID().getField());
+        noPartyIDsGr2.setField(new PartyID("party2"));
+        noPartyIDsGr2.setField(new PartyIDSource('D'));
+        noPartyIDsGr2.setField(new PartyRole(56));
+
+        noSidesGr1.addGroup(noPartyIDsGr1);
+        noSidesGr1.addGroup(noPartyIDsGr2);
+
+        message.addGroup(noSidesGr1);
+        String expectedMessage = message.toString();
+
+        MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setRawMessage(RawMessage.newBuilder()
+                                .setBody(ByteString.copyFrom(expectedMessage.getBytes()))
+                                .setMetadata(RawMessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .build())
+                        .build())
+                .build();
+
+        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader);
         assertEquals(messageGroupResult, expectedMessageGroup);
     }
 

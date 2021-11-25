@@ -13,7 +13,6 @@ import quickfix.ConfigError;
 import quickfix.DataDictionary;
 
 import java.io.InputStream;
-import java.util.Objects;
 
 public class QFJCodecFactory implements IPipelineCodecFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(QFJCodecFactory.class);

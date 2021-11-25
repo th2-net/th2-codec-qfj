@@ -21,6 +21,7 @@ import quickfix.FieldMap;
 import quickfix.FieldNotFound;
 import quickfix.Group;
 import quickfix.InvalidMessage;
+import quickfix.field.BeginString;
 import quickfix.field.CheckSum;
 import quickfix.field.MsgType;
 
@@ -99,11 +100,11 @@ public class QFJCodec implements IPipelineCodec {
                 .build();
     }
 
-    private <T> quickfix.Message getFixMessage(Map<String, Value> fieldsMap, String msgName) {
+    private quickfix.Message getFixMessage(Map<String, Value> fieldsMap, String msgName) {
 
         boolean isFix50 = false;
         if (appDataDictionary != null) {
-            isFix50 = isValidFix50Version(fieldsMap);
+            isFix50 = true;
             localDataDictionary = appDataDictionary;
         } else if (dataDictionary != null) {
             localDataDictionary = dataDictionary;
@@ -116,6 +117,10 @@ public class QFJCodec implements IPipelineCodec {
         quickfix.Message message = new quickfix.Message();
         quickfix.Message.Header header = message.getHeader();
         quickfix.Message.Trailer trailer = message.getTrailer();
+
+        if (!fieldsMap.containsKey("Header")) {
+            header.setField(new BeginString(localDataDictionary.getVersion()));
+        }
 
         String key;
         int tag;
@@ -141,7 +146,6 @@ public class QFJCodec implements IPipelineCodec {
                         message.addGroup(group);
                     }
                 } else {
-
                     if (isHeaderField(tag, isFix50)) {
                         throw new IllegalArgumentException("Header tag \"" + key + "\" in the body");
                     } else if (isTrailerField(tag, isFix50)) {
@@ -156,7 +160,7 @@ public class QFJCodec implements IPipelineCodec {
                 }
             }
         }
-        message.getHeader().setField(new MsgType(msgType));
+        header.setField(new MsgType(msgType));
 
         return message;
     }
@@ -252,15 +256,6 @@ public class QFJCodec implements IPipelineCodec {
 
     private boolean isValidMessageValue(Value value) {
         return value.getMessageValue().getFieldsCount() > 0;
-    }
-
-    private boolean isValidFix50Version(Map<String, Value> fieldsMap) {
-
-        final Value beginStringFix50 = Value.newBuilder().setSimpleValue(FIXT11).build();
-        if (!fieldsMap.get("Header").getMessageValue().getFieldsMap().containsValue(beginStringFix50)) {
-            throw new IllegalStateException("Incorrect BeginString for fix version");
-        }
-        return true;
     }
 
     private boolean isHeaderField(int tag, boolean isFix50) {
@@ -402,31 +397,28 @@ public class QFJCodec implements IPipelineCodec {
             } else {
                 putMessageField(messageBuilder, localDataDictionary, field);
             }
-
         }
         return messageBuilder.build();
     }
 
     //ADDING HEADER TO MESSAGE
     private Message getMessage(Iterator<Field<?>> iterator, Message.Builder messageBuilder, quickfix.Message.Header header, boolean isFix50) {
+
         DataDictionary dataDictionary = isFix50 ? transportDataDictionary : localDataDictionary;
-        if (dataDictionary == transportDataDictionary) {
-            Objects.requireNonNull(transportDataDictionary, "Required transportDataDictionary is absent");
-        }
 
         while (iterator.hasNext()) {
             Field<?> field = iterator.next();
 
-            if (localDataDictionary.isHeaderGroup(field.getTag())) {
+            if (dataDictionary.isHeaderGroup(field.getTag())) {
                 ListValue.@NotNull Builder listValue = ValueUtils.listValue();
                 List<Group> groups = header.getGroups(field.getTag());
 
-                DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(localDataDictionary.getGroup(DataDictionary.HEADER_ID, field.getTag()),
+                DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(dataDictionary.getGroup(DataDictionary.HEADER_ID, field.getTag()),
                         () -> "No GroupInfo for this combination of tag:{}" + field.getTag() + " and msgType:{}" + DataDictionary.HEADER_ID);
                 DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
 
                 fillListValue(listValue, innerDataDictionary, groups, DataDictionary.HEADER_ID);
-                messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
+                messageBuilder.putFields(dataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
             } else {
                 putMessageField(messageBuilder, dataDictionary, field);
             }

@@ -179,8 +179,6 @@
    <field name='OrderCapacity' required='N' />
    <field name='OrderRestrictions' required='N' />
    <field name='CustOrderCapacity' required='N' />
-   <field name='LastQty' required='N' />
-   <field name='UnderlyingLastQty' required='N' />
    <field name='LastPx' required='N' />
    <field name='UnderlyingLastPx' required='N' />
    <field name='LastParPx' required='N' />
@@ -667,7 +665,6 @@
    <component name='InstrmtLegGrp' required='N' />
    <field name='Side' required='Y' />
    <component name='OrderQtyData' required='Y' />
-   <field name='LastQty' required='N' />
    <field name='LastPx' required='N' />
    <field name='Text' required='N' />
    <field name='EncodedTextLen' required='N' />
@@ -688,7 +685,6 @@
    <field name='QuoteID' required='Y' />
    <field name='QuoteRespID' required='N' />
    <field name='QuoteType' required='N' />
-   <component name='QuotQualGrp' required='N' />
    <field name='QuoteResponseLevel' required='N' />
    <component name='Parties' required='N' />
    <field name='TradingSessionID' required='N' />
@@ -1464,7 +1460,6 @@
    <component name='UndInstrmtGrp' required='N' />
    <field name='UnderlyingTradingSessionID' required='N' />
    <field name='UnderlyingTradingSessionSubID' required='N' />
-   <field name='LastQty' required='Y' />
    <field name='LastPx' required='Y' />
    <field name='LastParPx' required='N' />
    <field name='LastSpotRate' required='N' />
@@ -1540,7 +1535,6 @@
    <field name='AcctIDSource' required='N' />
    <field name='AccountType' required='N' />
    <component name='LegQuotStatGrp' required='N' />
-   <component name='QuotQualGrp' required='N' />
    <field name='ExpireTime' required='N' />
    <field name='Price' required='N' />
    <field name='PriceType' required='N' />
@@ -1587,7 +1581,6 @@
    <field name='OrderCapacity' required='N' />
    <field name='IOIID' required='N' />
    <field name='QuoteType' required='N' />
-   <component name='QuotQualGrp' required='N' />
    <component name='Parties' required='N' />
    <field name='TradingSessionID' required='N' />
    <field name='TradingSessionSubID' required='N' />
@@ -2530,7 +2523,6 @@
    <group name='NoPositions' required='N'>
     <field name='PosType' required='N' />
     <field name='LongQty' required='N' />
-    <field name='ShortQty' required='N' />
     <field name='PosQtyStatus' required='N' />
     <component name='NestedParties' required='N' />
    </group>
@@ -2803,7 +2795,6 @@
   </component>
   <component name='ExecAllocGrp'>
    <group name='NoExecs' required='N'>
-    <field name='LastQty' required='N' />
     <field name='ExecID' required='N' />
     <field name='SecondaryExecID' required='N' />
     <field name='LastPx' required='N' />
@@ -3245,12 +3236,7 @@
     <field name='Currency' required='N' />
    </group>
   </component>
-  <component name='QuotQualGrp'>
-   <group name='NoQuoteQualifiers' required='N'>
-    <field name='QuoteQualifier' required='N' />
-   </group>
-  </component>
-  <component name='QuotReqGrp'>
+<component name='QuotReqGrp'>
    <group name='NoRelatedSym' required='Y'>
     <component name='Instrument' required='Y' />
     <component name='FinancingDetails' required='N' />
@@ -3274,7 +3260,6 @@
     <field name='AcctIDSource' required='N' />
     <field name='AccountType' required='N' />
     <component name='QuotReqLegsGrp' required='N' />
-    <component name='QuotQualGrp' required='N' />
     <field name='QuotePriceType' required='N' />
     <field name='OrdType' required='N' />
     <field name='ValidUntilTime' required='N' />
@@ -3324,7 +3309,6 @@
     <field name='AcctIDSource' required='N' />
     <field name='AccountType' required='N' />
     <component name='QuotReqLegsGrp' required='N' />
-    <component name='QuotQualGrp' required='N' />
     <field name='QuotePriceType' required='N' />
     <field name='OrdType' required='N' />
     <field name='ExpireTime' required='N' />
@@ -3850,7 +3834,6 @@
   </field>
   <field number='30' name='LastMkt' type='EXCHANGE' />
   <field number='31' name='LastPx' type='PRICE' />
-  <field number='32' name='LastQty' type='QTY' />
   <field number='33' name='NoLinesOfText' type='NUMINGROUP' />
   <field number='34' name='MsgSeqNum' type='SEQNUM' />
   <field number='35' name='MsgType' type='STRING'>
@@ -4563,7 +4546,6 @@
    <value enum='INVERSEFLOATER' description='INVERSE_FLOATER_BOND_YIELD' />
    <value enum='LASTCLOSE' description='MOST_RECENT_CLOSING_YIELD' />
    <value enum='LASTMONTH' description='CLOSING_YIELD_MOST_RECENT_MONTH' />
-   <value enum='LASTQUARTER' description='CLOSING_YIELD_MOST_RECENT_QUARTER' />
    <value enum='LASTYEAR' description='CLOSING_YIELD_MOST_RECENT_YEAR' />
    <value enum='LONGAVGLIFE' description='YIELD_TO_LONGEST_AVERAGE_LIFE' />
    <value enum='MARK' description='MARK_TO_MARKET_YIELD' />
@@ -5780,7 +5762,6 @@
    <value enum='N' description='NO' />
   </field>
   <field number='651' name='UnderlyingLastPx' type='PRICE' />
-  <field number='652' name='UnderlyingLastQty' type='QTY' />
   <field number='654' name='LegRefID' type='STRING' />
   <field number='655' name='ContraLegRefID' type='STRING' />
   <field number='656' name='SettlCurrBidFxRate' type='FLOAT' />
@@ -5885,7 +5866,6 @@
   <field number='701' name='YieldCalcDate' type='LOCALMKTDATE' />
   <field number='702' name='NoPositions' type='NUMINGROUP' />
   <field number='703' name='PosType' type='STRING'>
-   <value enum='TQ' description='TRANSACTION_QUANTITY' />
    <value enum='IAS' description='INTRA_SPREAD_QTY' />
    <value enum='IES' description='INTER_SPREAD_QTY' />
    <value enum='FIN' description='END_OF_DAY_QTY' />
@@ -5906,7 +5886,6 @@
    <value enum='SPL' description='INTEGRAL_SPLIT' />
   </field>
   <field number='704' name='LongQty' type='QTY' />
-  <field number='705' name='ShortQty' type='QTY' />
   <field number='706' name='PosQtyStatus' type='INT'>
    <value enum='0' description='SUBMITTED' />
    <value enum='1' description='ACCEPTED' />

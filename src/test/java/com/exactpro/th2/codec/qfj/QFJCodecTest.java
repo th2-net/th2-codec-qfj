@@ -302,7 +302,7 @@ public class QFJCodecTest {
 
     @BeforeAll
     private static void initQFJCodec() throws ConfigError {
-        codec = new QFJCodec(new QFJCodecSettings(),null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
+        codec = new QFJCodec(new QFJCodecSettings(), null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
 //        codec = new QFJCodec(new QFJCodecSettings(), new DataDictionary("src/test/resources/FIX44.xml"), null, null);
 
     }
@@ -336,12 +336,12 @@ public class QFJCodecTest {
         MessageGroup messageGroupResult = codec.encode(messageGroup);
         assertEquals(messageGroupResult, expectedMessageGroup);
     }
+
     @Test
     public void encodeMessageWithoutHeaderTest() {
 
         quickfix.Message message = new quickfix.Message();
         message.getHeader().setField(new BeginString("FIX.5.0"));
-//        message.getHeader().setField(new BeginString("FIX.4.4"));
         message.getHeader().setField(new MsgType("AE"));
 
         Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());

@@ -41,7 +41,6 @@ public class QFJCodec implements IPipelineCodec {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QFJCodec.class);
     private static final String PROTOCOL = "FIX";
-    private static final String FIXT11 = "FIXT.1.1";
 
     private final IPipelineCodecSettings settings;
     private final DataDictionary dataDictionary;
@@ -139,10 +138,9 @@ public class QFJCodec implements IPipelineCodec {
 
                 tag = validateTag(localDataDictionary.getFieldTag(key), key);
 
-                logTagValue(key, value.getSimpleValue(), tag);
-
                 if (isGroup(value)) {
-                    for (Group group : getGroups(value, tag, localDataDictionary)) {
+                    DataDictionary groupDataDictionary = localDataDictionary.getGroup(msgType, tag).getDataDictionary();
+                    for (Group group : getGroups(value, tag, localDataDictionary, groupDataDictionary, msgType)) {
                         message.addGroup(group);
                     }
                 } else {
@@ -152,7 +150,7 @@ public class QFJCodec implements IPipelineCodec {
                         throw new IllegalArgumentException("Trailer tag \"" + key + "\" in the body");
                     } else {
                         if (!localDataDictionary.isMsgField(msgType, tag)) {
-                            throw new IllegalArgumentException("tag \"" + tag + "\" does not belong to this type of message: " + msgType);
+                            throw new IllegalArgumentException("Tag \"" + key + "\" does not belong to this type of message: " + msgType);
                         }
                         Field<?> field = new Field<>(tag, value.getSimpleValue());
                         message.setField(tag, field);
@@ -165,7 +163,7 @@ public class QFJCodec implements IPipelineCodec {
         return message;
     }
 
-    private List<Group> getGroups(Value value, int tag, DataDictionary dataDictionary) {
+    private List<Group> getGroups(Value value, int tag, DataDictionary dataDictionary, DataDictionary groupDictionary, String msgType) {
 
         List<Value> valuesList = value.getListValue().getValuesList();
         List<Group> groups = new ArrayList<>();
@@ -182,17 +180,19 @@ public class QFJCodec implements IPipelineCodec {
                 innerTag = validateTag(dataDictionary.getFieldTag(innerKey), innerKey);
                 fieldsMapValue = fieldsMap.getValue();
 
-                logTagValue(innerKey, innerValue.getSimpleValue(), innerTag);
-
                 if (group == null) {
                     group = new Group(tag, innerTag);
                 }
                 if (isGroup(fieldsMapValue)) {
-                    List<Group> innerGroups = getGroups(fieldsMapValue, innerTag, dataDictionary);
+                    DataDictionary innerGroupDictionary = groupDictionary.getGroup(msgType, innerTag).getDataDictionary();
+                    List<Group> innerGroups = getGroups(fieldsMapValue, innerTag, dataDictionary, innerGroupDictionary, msgType);
                     for (Group innerGroup : innerGroups) {
                         group.addGroup(innerGroup);
                     }
                 } else {
+                    if (!groupDictionary.isField(innerTag)) {
+                        throw new IllegalArgumentException("Invalid tag " + innerKey + " for message group " + dataDictionary.getFieldName(tag));
+                    }
                     Field<?> groupField = new Field<>(innerTag, fieldsMapValue.getSimpleValue());
                     group.setField(innerTag, groupField);
                 }
@@ -203,14 +203,14 @@ public class QFJCodec implements IPipelineCodec {
     }
 
     private void setTrailer(Value value, quickfix.Message.Trailer trailer, boolean isFix50) {
-        setFieldMap(value, trailer, isFix50, false);
+        setFieldMap(value, trailer, DataDictionary.TRAILER_ID, isFix50, false);
     }
 
     private void setHeader(Value value, quickfix.Message.Header header, boolean isFix50) {
-        setFieldMap(value, header, isFix50, true);
+        setFieldMap(value, header, DataDictionary.HEADER_ID, isFix50, true);
     }
 
-    private void setFieldMap(Value value, FieldMap fieldMap, boolean isFix50, boolean isHeader) {
+    private void setFieldMap(Value value, FieldMap fieldMap, String msgType, boolean isFix50, boolean isHeader) {
 
         if (!isValidMessageValue(value)) {
             if (isHeader) {
@@ -219,22 +219,23 @@ public class QFJCodec implements IPipelineCodec {
                 LOGGER.error("Trailer is empty or contain incorrect values");
             }
         }
-        Map<String, Value> fieldsMap = value.getMessageValue().getFieldsMap();
+        DataDictionary transportDictionary = isFix50 ? transportDataDictionary : dataDictionary;
+
+        Map<String, Value> fields = value.getMessageValue().getFieldsMap();
 
         String key;
         int tag;
         Value innerValue;
 
-        for (Map.Entry<String, Value> fieldsMapEntry : fieldsMap.entrySet()) {
+        for (Map.Entry<String, Value> fieldsEntry : fields.entrySet()) {
 
-            key = fieldsMapEntry.getKey();
-            tag = validateTag(localDataDictionary.getFieldTag(key), key);
-            innerValue = fieldsMapEntry.getValue();
-
-            logTagValue(key, value.getSimpleValue(), tag);
+            key = fieldsEntry.getKey();
+            tag = validateTag(transportDictionary.getFieldTag(key), key);
+            innerValue = fieldsEntry.getValue();
 
             if (isGroup(innerValue)) {
-                for (Group group : getGroups(innerValue, tag, localDataDictionary)) {
+                DataDictionary groupDictionary = transportDictionary.getGroup(msgType, tag).getDataDictionary();
+                for (Group group : getGroups(innerValue, tag, transportDictionary, groupDictionary, msgType)) {
                     fieldMap.addGroup(group);
                 }
             } else {
@@ -243,7 +244,6 @@ public class QFJCodec implements IPipelineCodec {
                 } else if (!isHeader && !isTrailerField(tag, isFix50)) {
                     throw new IllegalArgumentException("Not trailer tag in Trailer directory: " + key);
                 }
-
                 Field<?> field = new Field<>(tag, innerValue.getSimpleValue());
                 fieldMap.setField(tag, field);
             }
@@ -364,7 +364,7 @@ public class QFJCodec implements IPipelineCodec {
                 fillListValue(listValue, innerDataDictionary, groups, msgType);
                 fieldsMap.put(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
             } else {
-                if (!localDataDictionary.isMsgField(msgType, field.getField())){
+                if (!localDataDictionary.isMsgField(msgType, field.getField())) {
                     throw new IllegalArgumentException("Invalid tag \"" + localDataDictionary.getFieldName(field.getField()) + "\" for message type " + msgType);
                 }
                 putField(localDataDictionary, fieldsMap, field);
@@ -390,14 +390,16 @@ public class QFJCodec implements IPipelineCodec {
             if (dataDictionary.isGroup(msgType, field.getTag())) {
                 ListValue.@NotNull Builder listValue = ValueUtils.listValue();
                 List<Group> groups = group.getGroups(field.getTag());
+
                 DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(dataDictionary.getGroup(msgType, field.getTag()),
                         () -> "No GroupInfo for this combination of tag:{}" + field.getTag() + " and msgType:{}" + msgType);
+
                 DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
 
                 fillListValue(listValue, innerDataDictionary, groups, msgType);
                 messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
             } else {
-                if (!group.isSetField(field.getField())){
+                if (!group.isSetField(field.getField())) {
                     throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + group);
                 }
                 putMessageField(messageBuilder, localDataDictionary, field);
@@ -409,23 +411,23 @@ public class QFJCodec implements IPipelineCodec {
     //ADDING HEADER TO MESSAGE
     private Message getMessage(Iterator<Field<?>> iterator, Message.Builder messageBuilder, quickfix.Message.Header header, boolean isFix50) {
 
-        DataDictionary dataDictionary = isFix50 ? transportDataDictionary : localDataDictionary;
+        DataDictionary transportDictionary = isFix50 ? transportDataDictionary : dataDictionary;
 
         while (iterator.hasNext()) {
             Field<?> field = iterator.next();
 
-            if (dataDictionary.isHeaderGroup(field.getTag())) {
+            if (transportDictionary.isHeaderGroup(field.getTag())) {
                 ListValue.@NotNull Builder listValue = ValueUtils.listValue();
                 List<Group> groups = header.getGroups(field.getTag());
 
-                DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(dataDictionary.getGroup(DataDictionary.HEADER_ID, field.getTag()),
+                DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(transportDictionary.getGroup(DataDictionary.HEADER_ID, field.getTag()),
                         () -> "No GroupInfo for this combination of tag:{}" + field.getTag() + " and msgType:{}" + DataDictionary.HEADER_ID);
                 DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
 
                 fillListValue(listValue, innerDataDictionary, groups, DataDictionary.HEADER_ID);
-                messageBuilder.putFields(dataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
+                messageBuilder.putFields(transportDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
             } else {
-                putMessageField(messageBuilder, dataDictionary, field);
+                putMessageField(messageBuilder, transportDictionary, field);
             }
         }
         return messageBuilder.build();
@@ -467,11 +469,5 @@ public class QFJCodec implements IPipelineCodec {
 
     private String getChecksum(String qfjMessage) {
         return qfjMessage.substring(qfjMessage.lastIndexOf("\00110=") + 4, qfjMessage.lastIndexOf('\001'));
-    }
-
-    private void logTagValue(String key, String simpleValue, int tag) {
-        LOGGER.trace("key: {}", key);
-        LOGGER.trace("value: {}", simpleValue);
-        LOGGER.trace("TAG №: {}", tag);
     }
 }

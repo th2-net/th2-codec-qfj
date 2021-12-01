@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import quickfix.ConfigError;
 import quickfix.DataDictionary;
 import quickfix.Group;
+import quickfix.field.ApplID;
 import quickfix.field.BeginString;
 import quickfix.field.HopCompID;
 import quickfix.field.MsgType;
@@ -30,6 +31,8 @@ import quickfix.field.PartyIDSource;
 import quickfix.field.PartyRole;
 import quickfix.field.SenderCompID;
 import quickfix.field.Side;
+import quickfix.field.Signature;
+import quickfix.field.SignatureLength;
 import quickfix.field.TargetCompID;
 
 import java.time.Instant;
@@ -107,9 +110,13 @@ public class QFJCodecTest {
         noSidesGr2.addGroup(noPartyIDsGr3);
         noSidesGr2.addGroup(noPartyIDsGr4);
 
+        fixMessage.setField(new ApplID("111"));
 
         fixMessage.addGroup(noSidesGr1);
         fixMessage.addGroup(noSidesGr2);
+
+        fixMessage.getTrailer().setField(new SignatureLength(9));
+        fixMessage.getTrailer().setField(new Signature("signature"));
 
         strFixMessage = fixMessage.toString();
         bodyLength = strFixMessage.substring(strFixMessage.indexOf("\0019=") + 3, strFixMessage.indexOf("\001", strFixMessage.indexOf("\0019=") + 1));
@@ -165,6 +172,7 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build());
+        fieldsMap.put("ApplID", Value.newBuilder().setSimpleValue("111").build());
         fieldsMap.put("NoSides", Value.newBuilder()
                 .setListValue(ListValue.newBuilder()
                         .addValues(Value.newBuilder()
@@ -197,8 +205,8 @@ public class QFJCodecTest {
                                                 .setListValue(ListValue.newBuilder()
                                                         .addValues(Value.newBuilder()
                                                                 .setMessageValue(Message.newBuilder()
-                                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party3").build())
                                                                         .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
+                                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party3").build())
                                                                         .putFields("PartyRole", Value.newBuilder().setSimpleValue("11").build())
                                                                         .build())
                                                                 .build())
@@ -218,6 +226,8 @@ public class QFJCodecTest {
         fieldsMap.put("Trailer", Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
+                        .putFields("SignatureLength", Value.newBuilder().setSimpleValue("9").build())
+                        .putFields("Signature", Value.newBuilder().setSimpleValue("signature").build())
                         .build())
                 .build());
 

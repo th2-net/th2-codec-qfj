@@ -7,19 +7,17 @@ import com.exactpro.th2.codec.api.IPipelineCodecSettings;
 import com.exactpro.th2.common.schema.dictionary.DictionaryType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import quickfix.ConfigError;
 import quickfix.DataDictionary;
 
 import java.io.InputStream;
 
 public class QFJCodecFactory implements IPipelineCodecFactory {
-    private static final Logger LOGGER = LoggerFactory.getLogger(QFJCodecFactory.class);
 
     private DataDictionary dataDictionary = null;
     private DataDictionary transportDataDictionary = null;
     private DataDictionary appDataDictionary = null;
+    private QFJCodecSettings settings;
 
     @Override
     public @NotNull String getProtocol() {
@@ -36,7 +34,8 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
     }
 
     @Override
-    public  @NotNull IPipelineCodec create(@Nullable IPipelineCodecSettings settings) {
+    public @NotNull IPipelineCodec create(@Nullable IPipelineCodecSettings settings) {
+        this.settings = (QFJCodecSettings) settings;
         return new QFJCodec(settings, dataDictionary, transportDataDictionary, appDataDictionary);
     }
 
@@ -44,12 +43,15 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
     public void init(@NotNull IPipelineCodecContext codecContext) {
 
         try {
-//            dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
-            transportDataDictionary = new DataDictionary((codecContext.get(DictionaryType.LEVEL1)));
-            appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL2));
+            if (settings.isFixt()) {
+                transportDataDictionary = new DataDictionary((codecContext.get(DictionaryType.MAIN)));
+                appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL1));
+            } else {
+                dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
+            }
 
         } catch (ConfigError error) {
-            LOGGER.error("Failed to load DataDictionary");
+            throw new IllegalStateException("Failed to load DataDictionary", error);
         }
     }
 

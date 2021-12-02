@@ -83,7 +83,11 @@ public class QFJCodec implements IPipelineCodec {
     public RawMessage encodeMessage(Message message) {
 
         String msgName = message.getMetadata().getMessageType();
-        quickfix.Message fixMessage = getFixMessage(message.getFieldsMap(), msgName);
+        String msgType = transportDataDictionary.getMsgType(msgName) != null ? transportDataDictionary.getMsgType(msgName) : appDataDictionary.getMsgType(msgName);
+        if (msgType == null){
+            throw new IllegalStateException("No such message type for message name: " + msgName);
+        }
+        quickfix.Message fixMessage = getFixMessage(message.getFieldsMap(), msgType);
 
         byte[] strFixMessage = fixMessage.toString().getBytes();
         var msgMetadata = message.getMetadata();
@@ -103,14 +107,15 @@ public class QFJCodec implements IPipelineCodec {
         return rawBuilder.build();
     }
 
-    private quickfix.Message getFixMessage(Map<String, Value> fieldsMap, String msgName) {
+    private quickfix.Message getFixMessage(Map<String, Value> fieldsMap, String msgType) {
 
         quickfix.Message message = new quickfix.Message();
 
         if (!fieldsMap.containsKey(HEADER)) {
             message.getHeader().setField(new BeginString(transportDataDictionary.getVersion()));
+            message.getHeader().setField(new MsgType(msgType));
         }
-        setFields(fieldsMap, message, appDataDictionary, appDataDictionary.getMsgType(msgName));
+        setFields(fieldsMap, message, appDataDictionary, msgType);
         return message;
     }
 
@@ -120,7 +125,6 @@ public class QFJCodec implements IPipelineCodec {
             if (key.equals(HEADER)) {
                 quickfix.Message message = (quickfix.Message) qfjFieldMap;
                 setFields(value.getMessageValue().getFieldsMap(), message.getHeader(), transportDataDictionary, DataDictionary.HEADER_ID);
-                message.getHeader().setField(new MsgType(msgType));
             } else if (key.equals(TRAILER)) {
                 quickfix.Message message = (quickfix.Message) qfjFieldMap;
                 setFields(value.getMessageValue().getFieldsMap(), message.getTrailer(), transportDataDictionary, DataDictionary.TRAILER_ID);

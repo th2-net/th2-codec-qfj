@@ -351,7 +351,7 @@ public class QFJCodecTest {
     public void encodeMessageWithoutHeaderTest() {
 
         quickfix.Message message = new quickfix.Message();
-        message.getHeader().setField(new BeginString("FIX.5.0"));
+        message.getHeader().setField(new BeginString("FIXT.1.1"));
         message.getHeader().setField(new MsgType("AE"));
 
         Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());

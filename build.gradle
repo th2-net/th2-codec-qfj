@@ -1,0 +1,75 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
+    id 'com.palantir.docker' version '0.25.0'
+}
+
+apply plugin: 'application'
+apply plugin: 'com.palantir.docker'
+
+group 'org.exactpro.th2'
+version release_version
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+    }
+    maven {
+        url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+    }
+}
+
+dependencies {
+    implementation 'com.exactpro.th2:codec:4.1.1'
+
+    implementation 'com.exactpro.th2:common:3.29.0'
+
+    implementation 'org.quickfixj:quickfixj-core:2.3.1'
+    implementation 'org.quickfixj:quickfixj-messages-all:2.3.1'
+
+    testImplementation 'org.mockito:mockito-all:1.10.19'
+    testImplementation 'org.junit.platform:junit-platform-commons:1.8.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
+
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClassName 'com.exactpro.th2.codec.MainKt'
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+}
+
+applicationName = 'service'
+
+distTar {
+    archiveName "${applicationName}.tar"
+}
+
+dockerPrepare {
+    dependsOn distTar
+}
+
+docker {
+    copySpec.from(tarTree("$buildDir/distributions/${applicationName}.tar"))
+}
+
+serviceLoader {
+    serviceInterface 'com.exactpro.th2.codec.api.IPipelineCodecFactory'
+}

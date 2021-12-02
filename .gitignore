@@ -1,0 +1,7 @@
+.gradle
+.idea
+build
+gen
+shared
+*.log
+logs

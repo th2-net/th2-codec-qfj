@@ -16,7 +16,9 @@
 package com.exactpro.th2.codec.qfj;
 
 import com.exactpro.th2.codec.api.IPipelineCodecSettings;
+import com.google.auto.service.AutoService;
 
+@AutoService(IPipelineCodecSettings.class)
 public class QFJCodecSettings implements IPipelineCodecSettings {
     private boolean fixt = true;
 

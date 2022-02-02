@@ -20,6 +20,8 @@ import com.exactpro.th2.codec.api.IPipelineCodecContext;
 import com.exactpro.th2.codec.api.IPipelineCodecFactory;
 import com.exactpro.th2.codec.api.IPipelineCodecSettings;
 import com.exactpro.th2.common.schema.dictionary.DictionaryType;
+import com.google.auto.service.AutoService;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import quickfix.ConfigError;
@@ -28,6 +30,7 @@ import quickfix.DataDictionary;
 import java.io.InputStream;
 import java.util.List;
 
+@AutoService(IPipelineCodecFactory.class)
 public class QFJCodecFactory implements IPipelineCodecFactory {
 
     private static final List<String> PROTOCOLS = List.of("FIX");

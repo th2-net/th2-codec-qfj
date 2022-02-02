@@ -26,6 +26,7 @@ import com.exactpro.th2.common.grpc.RawMessage;
 import com.exactpro.th2.common.grpc.RawMessageMetadata;
 import com.exactpro.th2.common.grpc.Value;
 import com.exactpro.th2.common.value.ValueUtils;
+import com.google.auto.service.AutoService;
 import com.google.protobuf.ByteString;
 import org.jetbrains.annotations.NotNull;
 import quickfix.DataDictionary;
@@ -46,7 +47,7 @@ import java.util.Objects;
 
 import static com.exactpro.th2.common.message.MessageUtils.toJson;
 
-
+@AutoService(IPipelineCodec.class)
 public class QFJCodec implements IPipelineCodec {
 
     private static final String PROTOCOL = "FIX";

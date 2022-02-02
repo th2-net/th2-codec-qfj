@@ -29,6 +29,8 @@ import com.exactpro.th2.common.value.ValueUtils;
 import com.google.auto.service.AutoService;
 import com.google.protobuf.ByteString;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import quickfix.DataDictionary;
 import quickfix.Field;
 import quickfix.FieldMap;
@@ -54,12 +56,10 @@ public class QFJCodec implements IPipelineCodec {
     private static final String HEADER = "Header";
     private static final String TRAILER = "Trailer";
 
-    private final IPipelineCodecSettings settings;
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;
 
-    public QFJCodec(IPipelineCodecSettings settings, DataDictionary dataDictionary, DataDictionary transportDataDictionary, DataDictionary appDataDictionary) {
-        this.settings = settings;
+    public QFJCodec(@Nullable DataDictionary dataDictionary, @Nullable DataDictionary transportDataDictionary, @Nullable DataDictionary appDataDictionary) {
 
         if (appDataDictionary != null) {
             this.appDataDictionary = appDataDictionary;

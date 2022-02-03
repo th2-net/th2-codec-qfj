@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.exactpro.th2:codec:4.5.0-dev-1783818520-SNAPSHOT'
+    implementation 'com.exactpro.th2:codec:4.5.0-th2-3095-1792194431-SNAPSHOT'
 
     implementation 'com.exactpro.th2:common:3.32.1'
 

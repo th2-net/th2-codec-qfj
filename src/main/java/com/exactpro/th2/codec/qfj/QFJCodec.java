@@ -28,6 +28,8 @@ import com.exactpro.th2.common.grpc.Value;
 import com.exactpro.th2.common.value.ValueUtils;
 import com.google.auto.service.AutoService;
 import com.google.protobuf.ByteString;
+
+import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -250,7 +252,8 @@ public class QFJCodec implements IPipelineCodec {
             throw new IllegalArgumentException("Cannot find message type in message: " + qfjMessage, fieldNotFound);
         }
 
-        String msgName = appDataDictionary.getValueName(MsgType.FIELD, msgType);
+        //FIXME: replace to required not null with origin message type in text
+        String msgName = ObjectUtils.defaultIfNull(appDataDictionary.getValueName(MsgType.FIELD, msgType), msgType);
         Message.Builder builder = Message.newBuilder();
 
 

@@ -256,7 +256,7 @@ public class QFJCodec implements IPipelineCodec {
         }
 
         //FIXME: replace to required not null with origin message type in text
-        String msgName = ObjectUtils.defaultIfNull(appDataDictionary.getValueName(MsgType.FIELD, msgType), msgType);
+        String msgName = ObjectUtils.defaultIfNull(transportDataDictionary.getValueName(MsgType.FIELD, msgType), msgType);
         Message.Builder builder = Message.newBuilder();
 
 
@@ -287,24 +287,26 @@ public class QFJCodec implements IPipelineCodec {
 
     private void fillMessageBody(Iterator<Field<?>> iterator, Message.Builder builder, quickfix.Message qfjMessage, String msgType) {
 
+        DataDictionary dictionary = qfjMessage.isAdmin() ? transportDataDictionary : appDataDictionary;
+
         iterator.forEachRemaining(field -> {
             if (field == null) {
                 LOGGER.warn("Null filed in the message with type {}, qfj msg {}", msgType, qfjMessage);
                 return;
             }
 
-            if (appDataDictionary.isGroup(msgType, field.getTag())) {
+            if (dictionary.isGroup(msgType, field.getTag())) {
                 List<Group> groups = qfjMessage.getGroups(field.getTag());
                 @NotNull ListValue.Builder listValue = ValueUtils.listValue();
-                DataDictionary innerDataDictionary = appDataDictionary.getGroup(msgType, field.getTag()).getDataDictionary();
+                DataDictionary innerDataDictionary = dictionary.getGroup(msgType, field.getTag()).getDataDictionary();
 
                 fillListValue(listValue, innerDataDictionary, groups, msgType);
-                builder.putFields(appDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
+                builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
             } else {
-                if (!appDataDictionary.isMsgField(msgType, field.getField())) {
-                    throw new IllegalArgumentException("Invalid tag \"" + appDataDictionary.getFieldName(field.getField()) + "\" for message type " + msgType);
+                if (!dictionary.isMsgField(msgType, field.getField())) {
+                    throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
                 }
-                builder.putFields(appDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(field.getObject()));
+                builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(field.getObject()));
             }
         });
     }

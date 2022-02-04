@@ -420,6 +420,6 @@ public class QFJCodecTest {
         MessageGroup expectedMessageGroup = messageGroup;
 
         MessageGroup result = codec.decode(rawMessageGroup);
-        assertEquals(result, expectedMessageGroup);
+        assertEquals(expectedMessageGroup, result);
     }
 }

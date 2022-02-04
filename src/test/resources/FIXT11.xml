@@ -165,7 +165,7 @@
             <value enum='AB' description='NEW_ORDER_MULTILEG'/>
             <value enum='AC' description='MULTILEG_ORDER_CANCEL_REPLACE'/>
             <value enum='AD' description='TRADE_CAPTURE_REPORT_REQUEST'/>
-            <value enum='AE' description='TRADE_CAPTURE_REPORT'/>
+            <value enum='AE' description='TradeCaptureReport'/> <!-- FIXME: All values must equeal names of message strucutre -->
             <value enum='AF' description='ORDER_MASS_STATUS_REQUEST'/>
             <value enum='AG' description='QUOTE_REQUEST_REJECT'/>
             <value enum='AH' description='RFQ_REQUEST'/>

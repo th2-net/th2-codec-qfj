@@ -164,7 +164,7 @@ public class QFJCodecTest {
 
         //INITIATING MESSAGE
         Map<String, Value> fieldsMap = new TreeMap<>();
-        fieldsMap.put("Header", Value.newBuilder()
+        fieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
                         .putFields("SenderCompID", Value.newBuilder().setSimpleValue("client").build())
@@ -238,7 +238,7 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build());
-        fieldsMap.put("Trailer", Value.newBuilder()
+        fieldsMap.put(QFJCodec.TRAILER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
                         .putFields("SignatureLength", Value.newBuilder().setSimpleValue("9").build())

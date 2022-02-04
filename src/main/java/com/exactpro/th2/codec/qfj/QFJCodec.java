@@ -57,9 +57,9 @@ import static com.exactpro.th2.common.message.MessageUtils.toJson;
 public class QFJCodec implements IPipelineCodec {
     private static Logger LOGGER = LoggerFactory.getLogger(QFJCodec.class);
 
-    private static final String PROTOCOL = "FIX";
-    private static final String HEADER = "Header";
-    private static final String TRAILER = "Trailer";
+    public static final String PROTOCOL = "FIX";
+    public static final String HEADER = "header";
+    public static final String TRAILER = "trailer";
 
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;

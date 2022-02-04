@@ -242,10 +242,10 @@ public class QFJCodec implements IPipelineCodec {
         String strMessage = new String(rawMessage.getBody().toByteArray(), StandardCharsets.UTF_8);
         quickfix.Message qfjMessage = new quickfix.Message();
 
-        if (appDataDictionary != transportDataDictionary) {
-            qfjMessage.fromString(strMessage, transportDataDictionary, appDataDictionary, true, true);
-        } else {
+        if (Objects.equals(appDataDictionary, transportDataDictionary)) {
             qfjMessage.fromString(strMessage, appDataDictionary, true, true);
+        } else {
+            qfjMessage.fromString(strMessage, transportDataDictionary, appDataDictionary, true, true);
         }
 
         String msgType;
@@ -289,7 +289,7 @@ public class QFJCodec implements IPipelineCodec {
 
         iterator.forEachRemaining(field -> {
             if (field == null) {
-                LOGGER.warn("Null filed in the message with type {}", msgType);
+                LOGGER.warn("Null filed in the message with type {}, qfj msg {}", msgType, qfjMessage);
                 return;
             }
 

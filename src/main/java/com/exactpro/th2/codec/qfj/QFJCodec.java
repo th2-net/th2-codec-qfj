@@ -239,14 +239,7 @@ public class QFJCodec implements IPipelineCodec {
 
     public Message decodeMessage(RawMessage rawMessage) throws InvalidMessage {
 
-        String strMessage = new String(rawMessage.getBody().toByteArray(), StandardCharsets.UTF_8);
-        quickfix.Message qfjMessage = new quickfix.Message();
-
-        if (Objects.equals(appDataDictionary, transportDataDictionary)) {
-            qfjMessage.fromString(strMessage, appDataDictionary, true, true);
-        } else {
-            qfjMessage.fromString(strMessage, transportDataDictionary, appDataDictionary, true, true);
-        }
+        quickfix.Message qfjMessage = parseQfjMessage(rawMessage.getBody().toByteArray());
 
         String msgType;
         try {
@@ -283,6 +276,25 @@ public class QFJCodec implements IPipelineCodec {
                         .putAllProperties(rawMessage.getMetadata().getPropertiesMap())
                         .build())
                 .build();
+    }
+
+    @NotNull
+    private quickfix.Message parseQfjMessage(byte[] rawMessage) throws InvalidMessage {
+        String strMessage = new String(rawMessage,  StandardCharsets.UTF_8);
+
+        quickfix.Message qfjMessage = new quickfix.Message();
+
+        if (Objects.equals(appDataDictionary, transportDataDictionary)) {
+            qfjMessage.fromString(strMessage, appDataDictionary, true, true);
+        } else {
+            qfjMessage.fromString(strMessage, transportDataDictionary, appDataDictionary, true, true);
+        }
+
+        if (qfjMessage.getException() != null) {
+            throw new IllegalStateException("Can't decode message '" + strMessage + '\'', qfjMessage.getException());
+        }
+
+        return qfjMessage;
     }
 
     private void fillMessageBody(Iterator<Field<?>> iterator, Message.Builder builder, quickfix.Message qfjMessage, String msgType) {

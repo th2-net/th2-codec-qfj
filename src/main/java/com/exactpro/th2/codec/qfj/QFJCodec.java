@@ -32,6 +32,8 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import quickfix.DataDictionary;
 import quickfix.Field;
@@ -53,6 +55,7 @@ import static com.exactpro.th2.common.message.MessageUtils.toJson;
 
 @AutoService(IPipelineCodec.class)
 public class QFJCodec implements IPipelineCodec {
+    private static Logger LOGGER = LoggerFactory.getLogger(QFJCodec.class);
 
     private static final String PROTOCOL = "FIX";
     private static final String HEADER = "Header";
@@ -285,6 +288,11 @@ public class QFJCodec implements IPipelineCodec {
     private void fillMessageBody(Iterator<Field<?>> iterator, Message.Builder builder, quickfix.Message qfjMessage, String msgType) {
 
         iterator.forEachRemaining(field -> {
+            if (field == null) {
+                LOGGER.warn("Null filed in the message with type {}", msgType);
+                return;
+            }
+
             if (appDataDictionary.isGroup(msgType, field.getTag())) {
                 List<Group> groups = qfjMessage.getGroups(field.getTag());
                 @NotNull ListValue.Builder listValue = ValueUtils.listValue();

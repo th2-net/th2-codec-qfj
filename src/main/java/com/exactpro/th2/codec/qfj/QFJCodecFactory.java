@@ -68,10 +68,10 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
             if (qfjCodecSettings.isFixt()) {
                 DataDictionary transport = new DataDictionary(codecContext.get(DictionaryType.MAIN));
                 DataDictionary appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL1));
-                return new QFJCodec(null, transport, appDataDictionary);
+                return new QFJCodec(qfjCodecSettings, null, transport, appDataDictionary);
             } else {
                 DataDictionary dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
-                return new QFJCodec(dataDictionary, null, null);
+                return new QFJCodec(qfjCodecSettings, dataDictionary, null, null);
             }
         } catch (ConfigError error) {
             throw new IllegalStateException("Failed to load DataDictionary", error);

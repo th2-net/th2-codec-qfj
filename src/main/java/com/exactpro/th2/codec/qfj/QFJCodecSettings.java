@@ -21,6 +21,7 @@ import com.google.auto.service.AutoService;
 @AutoService(IPipelineCodecSettings.class)
 public class QFJCodecSettings implements IPipelineCodecSettings {
     private boolean fixt = true;
+    private boolean checkFieldsOutOfOrder = true;
 
     public boolean isFixt() {
         return fixt;
@@ -28,5 +29,13 @@ public class QFJCodecSettings implements IPipelineCodecSettings {
 
     public void setFixt(boolean fixt) {
         this.fixt = fixt;
+    }
+
+    public boolean isCheckFieldsOutOfOrder() {
+        return checkFieldsOutOfOrder;
+    }
+
+    public void setCheckFieldsOutOfOrder(boolean checkFieldsOutOfOrder) {
+        this.checkFieldsOutOfOrder = checkFieldsOutOfOrder;
     }
 }

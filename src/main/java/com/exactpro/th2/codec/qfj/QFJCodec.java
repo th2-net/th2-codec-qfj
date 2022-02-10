@@ -16,7 +16,6 @@
 package com.exactpro.th2.codec.qfj;
 
 import com.exactpro.th2.codec.api.IPipelineCodec;
-import com.exactpro.th2.codec.api.IPipelineCodecSettings;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ListValue;
 import com.exactpro.th2.common.grpc.Message;
@@ -64,17 +63,23 @@ public class QFJCodec implements IPipelineCodec {
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;
 
-    public QFJCodec(@Nullable DataDictionary dataDictionary, @Nullable DataDictionary transportDataDictionary, @Nullable DataDictionary appDataDictionary) {
+    public QFJCodec(QFJCodecSettings qfjCodecSettings, @Nullable DataDictionary dataDictionary, @Nullable DataDictionary transportDataDictionary, @Nullable DataDictionary appDataDictionary) {
 
         if (appDataDictionary != null) {
-            this.appDataDictionary = appDataDictionary;
-            this.transportDataDictionary = transportDataDictionary;
+            this.appDataDictionary = configureDictionary(qfjCodecSettings, appDataDictionary);
+            this.transportDataDictionary = configureDictionary(qfjCodecSettings, transportDataDictionary);
         } else if (dataDictionary != null) {
+            configureDictionary(qfjCodecSettings, dataDictionary);
             this.appDataDictionary = dataDictionary;
             this.transportDataDictionary = dataDictionary;
         } else {
             throw new IllegalStateException("No available dictionaries.");
         }
+    }
+
+    private DataDictionary configureDictionary(QFJCodecSettings settings, DataDictionary dictionary) {
+        dictionary.setCheckFieldsOutOfOrder(settings.isCheckFieldsOutOfOrder());
+        return dictionary;
     }
 
     @Override
@@ -293,7 +298,6 @@ public class QFJCodec implements IPipelineCodec {
         if (qfjMessage.getException() != null) {
             throw new IllegalStateException("Can't decode message '" + strMessage + '\'', qfjMessage.getException());
         }
-
         return qfjMessage;
     }
 

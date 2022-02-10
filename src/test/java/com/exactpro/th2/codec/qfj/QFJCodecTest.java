@@ -327,7 +327,7 @@ public class QFJCodecTest {
 
     @BeforeAll
     private static void initQFJCodec() throws ConfigError {
-        codec = new QFJCodec(null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
+        codec = new QFJCodec(new QFJCodecSettings(), null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
 //        codec = new QFJCodec(new DataDictionary("src/test/resources/FIX44.xml"), null, null);
 
     }

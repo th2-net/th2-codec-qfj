@@ -63,29 +63,29 @@ spec:
     # encoder
     - name: in_codec_encode
       connection-type: mq
-      attributes: [ 'encoder_in', 'parsed', 'subscribe' ]
+      attributes: [ 'encoder_in', 'group', 'subscribe' ]
     - name: out_codec_encode
       connection-type: mq
-      attributes: [ 'encoder_out', 'raw', 'publish' ]
+      attributes: [ 'encoder_out', 'group', 'publish' ]
     # decoder
     - name: in_codec_decode
       connection-type: mq
-      attributes: ['decoder_in', 'raw', 'subscribe']
+      attributes: ['decoder_in', 'group', 'subscribe']
     - name: out_codec_decode
       connection-type: mq
-      attributes: ['decoder_out', 'parsed', 'publish']
+      attributes: ['decoder_out', 'group', 'publish']
     # encoder general (technical)
     - name: in_codec_general_encode
       connection-type: mq
-      attributes: ['general_encoder_in', 'parsed', 'subscribe']
+      attributes: ['general_encoder_in', 'group', 'subscribe']
     - name: out_codec_general_encode
       connection-type: mq
-      attributes: ['general_encoder_out', 'raw', 'publish']
+      attributes: ['general_encoder_out', 'group', 'publish']
     # decoder general (technical)
     - name: in_codec_general_decode
       connection-type: mq
-      attributes: ['general_decoder_in', 'raw', 'subscribe']
+      attributes: ['general_decoder_in', 'group', 'subscribe']
     - name: out_codec_general_decode
       connection-type: mq
-      attributes: ['general_decoder_out', 'parsed', 'publish']
+      attributes: ['general_decoder_out', 'group', 'publish']
 ```

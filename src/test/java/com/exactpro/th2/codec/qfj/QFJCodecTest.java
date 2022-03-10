@@ -15,6 +15,7 @@
  */
 package com.exactpro.th2.codec.qfj;
 
+import com.exactpro.th2.codec.api.impl.ReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ConnectionID;
 import com.exactpro.th2.common.grpc.Direction;
@@ -366,7 +367,7 @@ public class QFJCodecTest {
                         .build())
                 .build();
 
-        MessageGroup messageGroupResult = codec.encode(messageGroup);
+        MessageGroup messageGroupResult = codec.encode(messageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -419,7 +420,7 @@ public class QFJCodecTest {
                         .build())
                 .build();
 
-        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader);
+        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -427,7 +428,7 @@ public class QFJCodecTest {
     public void decodeTest() {
         MessageGroup expectedMessageGroup = messageGroup;
 
-        MessageGroup result = codec.decode(rawMessageGroup);
+        MessageGroup result = codec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 
@@ -480,7 +481,7 @@ public class QFJCodecTest {
         String checksumValue = strFixMessage.substring(strFixMessage.lastIndexOf("\00110=") + 4, strFixMessage.lastIndexOf("\001"));
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> {
-            codec.decode(rawMessageGroup);
+            codec.decode(rawMessageGroup, new ReportingContext());
         });
 
         assertTrue(thrown
@@ -539,7 +540,7 @@ public class QFJCodecTest {
         anotherSettings.setFixt(true);
         QFJCodec anotherCodec = new QFJCodec(anotherSettings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
 
-        MessageGroup result = anotherCodec.decode(rawMessageGroup);
+        MessageGroup result = anotherCodec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 }

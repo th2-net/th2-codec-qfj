@@ -543,4 +543,154 @@ public class QFJCodecTest {
         MessageGroup result = anotherCodec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
+
+    @Test
+    public void replaceValuesWithEnumNamesTest() throws ConfigError {
+
+        QFJCodecSettings settings = new QFJCodecSettings();
+        settings.setCheckFieldsOutOfOrder(false);
+        settings.setFixt(true);
+        settings.setReplaceValuesWithEnumNames(true);
+        QFJCodec codec = new QFJCodec(settings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
+
+
+        quickfix.Message message = new quickfix.Message();
+        message.getHeader().setField(new BeginString("FIXT.1.1"));
+        message.getHeader().setField(new MsgType("AE"));
+
+        Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());
+        noSidesGr1.setField(new Side('1'));
+
+        message.addGroup(noSidesGr1);
+
+        String strFixMessage = message.toString();
+        String bodyLength = strFixMessage.substring(strFixMessage.indexOf("\0019=") + 3, strFixMessage.indexOf("\001", strFixMessage.indexOf("\0019=") + 1));
+        String checksumValue = strFixMessage.substring(strFixMessage.lastIndexOf("\00110=") + 4, strFixMessage.lastIndexOf("\001"));
+
+        byte[] bytes = message.toString().getBytes();
+
+        MessageGroup rawMessageGroup = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setRawMessage(RawMessage.newBuilder()
+                                .setBody(ByteString.copyFrom(bytes))
+                                .setMetadata(RawMessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .build())
+                        .build())
+                .build();
+
+        Map<String, Value> fieldsMap = new TreeMap<>();
+        fieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
+                        .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
+                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TradeCaptureReport").build()) //instead AE
+                        .build())
+                .build());
+        fieldsMap.put("NoSides", Value.newBuilder()
+                .setListValue(ListValue.newBuilder()
+                        .addValues(Value.newBuilder()
+                                .setMessageValue(Message.newBuilder()
+                                        .putFields("Side", Value.newBuilder().setSimpleValue("BUY").build()) //instead 1
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        fieldsMap.put(QFJCodec.TRAILER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
+                        .build())
+                .build());
+
+        MessageGroup expected = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setMessage(Message.newBuilder()
+                                .putAllFields(fieldsMap)
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .setMetadata(MessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setMessageType("TradeCaptureReport")
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        MessageGroup messageGroup = codec.decode(rawMessageGroup, new ReportingContext());
+        assertEquals(expected, messageGroup);
+
+        // Encode
+        Map<String, Value> fieldsMap2 = new TreeMap<>();
+        fieldsMap2.put(QFJCodec.HEADER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
+                        .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
+                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TradeCaptureReport").build()) //instead AE
+                        .build())
+                .build());
+        fieldsMap2.put("NoSides", Value.newBuilder()
+                .setListValue(ListValue.newBuilder()
+                        .addValues(Value.newBuilder()
+                                .setMessageValue(Message.newBuilder()
+                                        .putFields("Side", Value.newBuilder().setSimpleValue("BUY").build()) //instead 1
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        fieldsMap2.put(QFJCodec.TRAILER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
+                        .build())
+                .build());
+
+        MessageGroup forEncode = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setMessage(Message.newBuilder()
+                                .putAllFields(fieldsMap2)
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .setMetadata(MessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setMessageType("TradeCaptureReport")
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        MessageGroup result = codec.encode(forEncode, new ReportingContext());
+        assertEquals(rawMessageGroup, result);
+    }
 }

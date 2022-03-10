@@ -6,14 +6,24 @@ TODO: add infromation about dictionaries and configuration
 
 ### Configuration example
 
+```yaml
+fixt: true
+checkFieldsOutOfOrder: true
+replaceValuesWithEnumNames: false
+```
+
 * fixt - codec-qfj should be configured by two dictionaries: MAIN business and LEVEL1 session levels other ways only the MAIN dictionary with messages from both layers is required.
 * checkFieldsOutOfOrder - controls whether out of order fields are checked. Default value is true.
   This option is useful when messages to decode have a fields order that differs from the order defined in the configured dictionary. 
   Example of the particular case: header's fields are mixed with body's fields.  
-
-```yaml
-fixt: true
-checkFieldsOutOfOrder: true
+* replaceValuesWithEnumNames - (default false) replace values with its enum names if there are enum values for the tag.  
+  Example:
+  The value `B` for tag `4` should be replaced with `BUY` value. If enum value is missing the original value should be left.
+  If a field does not contain values the value should be left unchanged.
+```xml
+<field number="4" name="AdvSide" type="STRING">
+  <value enum="B" description="BUY"/>
+</field>
 ```
 
 For example:
@@ -28,6 +38,7 @@ spec:
     codecSettings:
       fixt: true
       checkFieldsOutOfOrder: true
+      replaceValuesWithEnumNames: false
 ```
 
 ## Required pins
@@ -59,6 +70,7 @@ spec:
 #    codecSettings:
 #      fixt: true
 #      checkFieldsOutOfOrder: true
+#      replaceValuesWithEnumNames: false
   pins:
     # encoder
     - name: in_codec_encode

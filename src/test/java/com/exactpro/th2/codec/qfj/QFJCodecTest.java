@@ -185,7 +185,7 @@ public class QFJCodecTest {
                         .putFields("SenderCompID", Value.newBuilder().setSimpleValue("client").build())
                         .putFields("TargetCompID", Value.newBuilder().setSimpleValue("server").build())
                         .putFields("SendingTime", Value.newBuilder().setSimpleValue(
-                                UtcTimestampConverter.convert(LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC), UtcTimestampPrecision.MICROS)).build())
+                                LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC).toString()).build())
                         .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
                         .putFields("MsgType", Value.newBuilder().setSimpleValue("AE").build())
                         .putFields("NoHops", Value.newBuilder()
@@ -378,19 +378,7 @@ public class QFJCodecTest {
                         .build())
                 .build();
 
-        var changedSendingTime = messageGroup.toBuilder();
-        var changedHeader = changedSendingTime.getMessagesBuilder(0)
-                .getMessageBuilder()
-                .getFieldsMap()
-                .get(QFJCodec.HEADER)
-                .toBuilder();
-        changedHeader.getMessageValueBuilder()
-                .putFields("SendingTime", ValueUtils.toValue(LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC)));
-        changedSendingTime.getMessagesBuilder(0)
-                .getMessageBuilder()
-                .putFields(QFJCodec.HEADER, changedHeader.build());
-
-        MessageGroup messageGroupResult = codec.encode(changedSendingTime.build(), new ReportingContext());
+        MessageGroup messageGroupResult = codec.encode(messageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 

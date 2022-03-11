@@ -37,14 +37,28 @@ import org.slf4j.LoggerFactory;
 
 import quickfix.DataDictionary;
 import quickfix.Field;
+import quickfix.FieldConvertError;
 import quickfix.FieldMap;
 import quickfix.FieldNotFound;
+import quickfix.FieldType;
 import quickfix.Group;
 import quickfix.InvalidMessage;
+import quickfix.UtcTimestampPrecision;
 import quickfix.field.BeginString;
 import quickfix.field.MsgType;
+import quickfix.field.converter.BooleanConverter;
+import quickfix.field.converter.DecimalConverter;
+import quickfix.field.converter.IntConverter;
+import quickfix.field.converter.UtcDateOnlyConverter;
+import quickfix.field.converter.UtcTimeOnlyConverter;
+import quickfix.field.converter.UtcTimestampConverter;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -219,14 +233,137 @@ public class QFJCodec implements IPipelineCodec {
         return groups;
     }
 
-    private Field<?> getField(int tag, String fieldsMapValue, DataDictionary dataDictionary) {
+    private Field<?> getField(int tag, String valueName, DataDictionary dataDictionary) {
 
-        String valueName = dataDictionary.getValue(tag, fieldsMapValue);
-        return valueName != null ? new Field<>(tag, valueName) : new Field<>(tag, fieldsMapValue);
+        String value = dataDictionary.getValue(tag, valueName);
+        return new Field<>(tag, value == null ? valueName : convertToType(dataDictionary.getFieldType(tag), value));
+    }
+
+    private String convertToType(FieldType fieldType, String value) {
+        switch (fieldType) {
+            case UTCTIMESTAMP:
+                return toTimestamp(fieldType, value);
+            case UTCTIMEONLY:
+                return toTimeOnly(fieldType, value);
+            case UTCDATEONLY:
+                return toDateOnly(fieldType, value);
+            case FLOAT:
+            case AMT:
+            case PRICE:
+            case PRICEOFFSET:
+            case QTY:
+            case PERCENTAGE:
+                return toDecimal(fieldType, value);
+            case INT:
+            case LENGTH:
+            case NUMINGROUP:
+            case SEQNUM:
+                return toInt(fieldType, value);
+            case BOOLEAN:
+                return toBool(fieldType, value);
+            default:
+                return value;
+        }
+    }
+
+    private String toBool(FieldType fieldType, String value) {
+        boolean bool;
+        try {
+            if (!"true".equals(value) && !"false".equals(value)) {
+                bool = BooleanConverter.convert(value);
+            } else {
+                bool = "true".equals(value);
+            }
+        } catch (FieldConvertError error) {
+            throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+        }
+        return BooleanConverter.convert(bool);
+    }
+
+    private String toInt(FieldType fieldType, String value) {
+        int intValue;
+        try {
+            intValue = IntConverter.convert(value);
+        } catch (FieldConvertError error) {
+            throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+        }
+        return IntConverter.convert(intValue);
+    }
+
+    private String toDecimal(FieldType fieldType, String value) {
+        BigDecimal decimal;
+        try {
+            decimal = DecimalConverter.convert(value);
+        } catch (FieldConvertError error) {
+            throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+        }
+        return DecimalConverter.convert(decimal);
+    }
+
+    @NotNull
+    private String toTimestamp(FieldType fieldType, String value) {
+        LocalDateTime localDateTime;
+        try {
+            localDateTime = LocalDateTime.parse(value);
+        } catch (DateTimeParseException ex) {
+            try {
+                localDateTime = UtcTimestampConverter.convertToLocalDateTime(value);
+            } catch (FieldConvertError error) {
+                throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+            }
+        }
+        return UtcTimestampConverter.convert(localDateTime, calculatePrecision(localDateTime.getNano()));
+    }
+
+    @NotNull
+    private String toTimeOnly(FieldType fieldType, String value) {
+        LocalTime localTime;
+        try {
+            localTime = LocalTime.parse(value);
+        } catch (DateTimeParseException ex) {
+            try {
+                localTime = UtcTimeOnlyConverter.convertToLocalTime(value);
+            } catch (FieldConvertError error) {
+                throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+            }
+        }
+        return UtcTimeOnlyConverter.convert(localTime, calculatePrecision(localTime.getNano()));
+    }
+
+    @NotNull
+    private String toDateOnly(FieldType fieldType, String value) {
+        LocalDate localDate;
+        try {
+            localDate = LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            try {
+                localDate = UtcDateOnlyConverter.convertToLocalDate(value);
+            } catch (FieldConvertError error) {
+                throw new IllegalArgumentException("incorrect value " + value + " for type: " + fieldType, error);
+            }
+        }
+        return UtcDateOnlyConverter.convert(localDate);
+    }
+
+    private UtcTimestampPrecision calculatePrecision(int nanos) {
+        if (nanos == 0) {
+            return UtcTimestampPrecision.SECONDS;
+        }
+        if (nanos < 1_000) {
+            return UtcTimestampPrecision.NANOS;
+        }
+        if (nanos < 1_000_000) {
+            return UtcTimestampPrecision.MICROS;
+        }
+        if (nanos < 1_000_000_000) {
+            return UtcTimestampPrecision.MILLIS;
+        }
+        throw new IllegalArgumentException("nanos have incorrect value: " + nanos);
     }
 
     @Override
-    public @NotNull MessageGroup decode(@NotNull MessageGroup messageGroup, @NotNull IReportingContext iReportingContext) {
+    public @NotNull MessageGroup decode(@NotNull MessageGroup messageGroup, @NotNull IReportingContext
+            iReportingContext) {
 
         var messages = messageGroup.getMessagesList();
 
@@ -310,7 +447,8 @@ public class QFJCodec implements IPipelineCodec {
         return qfjMessage;
     }
 
-    private void fillMessageBody(Iterator<Field<?>> iterator, Message.Builder builder, quickfix.Message qfjMessage, String msgType) {
+    private void fillMessageBody(Iterator<Field<?>> iterator, Message.Builder builder, quickfix.Message
+            qfjMessage, String msgType) {
 
         DataDictionary dictionary = qfjMessage.isAdmin() ? transportDataDictionary : appDataDictionary;
 
@@ -332,16 +470,17 @@ public class QFJCodec implements IPipelineCodec {
                     throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
                 }
 
+                String value = convertToType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
                 if (replaceValuesWithEnumNames) {
-                    putField(dictionary, builder, field.getTag(), (String) field.getObject());
+                    putField(dictionary, builder, field.getTag(), value);
                 } else {
-                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(field.getObject()));
+                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
                 }
             }
         });
     }
 
-    private void putField(DataDictionary dictionary, Message.Builder builder,  int tag, String value){
+    private void putField(DataDictionary dictionary, Message.Builder builder, int tag, String value) {
 
         String valueName = dictionary.getValueName(tag, value);
         builder.putFields(dictionary.getFieldName(tag), ValueUtils.toValue(valueName == null ? value : valueName));
@@ -356,7 +495,8 @@ public class QFJCodec implements IPipelineCodec {
         }
     }
 
-    private Message getMessage(Iterator<Field<?>> iterator, DataDictionary dataDictionary, FieldMap fieldMap, String msgType) {
+    private Message getMessage(Iterator<Field<?>> iterator, DataDictionary dataDictionary, FieldMap
+            fieldMap, String msgType) {
         Message.Builder messageBuilder = Message.newBuilder();
         iterator.forEachRemaining(field -> {
             DataDictionary localDataDictionary = transportDataDictionary.isHeaderField(field.getField()) ||
@@ -377,10 +517,11 @@ public class QFJCodec implements IPipelineCodec {
                     throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + fieldMap);
                 }
 
+                String value = convertToType(localDataDictionary.getFieldType(field.getTag()), (String) field.getObject());
                 if (replaceValuesWithEnumNames) {
-                    putField(localDataDictionary, messageBuilder, field.getTag(), (String) field.getObject());
+                    putField(localDataDictionary, messageBuilder, field.getTag(), value);
                 } else {
-                    messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue((String) field.getObject()));
+                    messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
                 }
             }
         });

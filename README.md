@@ -4,6 +4,8 @@
 
 TODO: add infromation about dictionaries and configuration 
 
+MsgType of the message is taken from the enum of the names of msgType(35) field in the dictionary
+
 ### Configuration example
 
 ```yaml

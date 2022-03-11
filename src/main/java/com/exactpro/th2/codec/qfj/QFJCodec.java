@@ -331,9 +331,20 @@ public class QFJCodec implements IPipelineCodec {
                 if (!dictionary.isMsgField(msgType, field.getField())) {
                     throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
                 }
-                builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(field.getObject()));
+
+                if (replaceValuesWithEnumNames) {
+                    putField(dictionary, builder, field.getTag(), (String) field.getObject());
+                } else {
+                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(field.getObject()));
+                }
             }
         });
+    }
+
+    private void putField(DataDictionary dictionary, Message.Builder builder,  int tag, String value){
+
+        String valueName = dictionary.getValueName(tag, value);
+        builder.putFields(dictionary.getFieldName(tag), ValueUtils.toValue(valueName == null ? value : valueName));
     }
 
     private void fillListValue(ListValue.Builder listValue, DataDictionary
@@ -367,22 +378,13 @@ public class QFJCodec implements IPipelineCodec {
                 }
 
                 if (replaceValuesWithEnumNames) {
-                    String valueName = localDataDictionary.getValueName(field.getTag(), (String) field.getObject());
-                    if (valueName != null) {
-                        putMessageField(messageBuilder, localDataDictionary, field.getTag(), valueName);
-                    } else {
-                        putMessageField(messageBuilder, localDataDictionary, field.getTag(), (String) field.getObject());
-                    }
+                    putField(localDataDictionary, messageBuilder, field.getTag(), (String) field.getObject());
                 } else {
-                    putMessageField(messageBuilder, localDataDictionary, field.getTag(), (String) field.getObject());
+                    messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue((String) field.getObject()));
                 }
             }
         });
         return messageBuilder.build();
-    }
-
-    private void putMessageField(Message.Builder messageBuilder, DataDictionary dataDictionary, int tag, String value) {
-        messageBuilder.putFields(dataDictionary.getFieldName(tag), ValueUtils.toValue(value));
     }
 
     @Override

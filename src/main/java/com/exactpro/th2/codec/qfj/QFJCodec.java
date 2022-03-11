@@ -239,6 +239,37 @@ public class QFJCodec implements IPipelineCodec {
         return new Field<>(tag, value == null ? convertToType(dataDictionary.getFieldType(tag), valueName) : value );
     }
 
+    private String decodeFromType(FieldType fieldType, String value) {
+        try {
+            switch (fieldType) {
+            case UTCTIMESTAMP:
+                return UtcTimestampConverter.convertToLocalDateTime(value).toString();
+            case UTCTIMEONLY:
+                return UtcTimeOnlyConverter.convertToLocalTime(value).toString();
+            case UTCDATEONLY:
+                return UtcDateOnlyConverter.convertToLocalDate(value).toString();
+            case FLOAT:
+            case AMT:
+            case PRICE:
+            case PRICEOFFSET:
+            case QTY:
+            case PERCENTAGE:
+                return DecimalConverter.convert(value).toPlainString();
+            case INT:
+            case LENGTH:
+            case NUMINGROUP:
+            case SEQNUM:
+                return String.valueOf(IntConverter.convert(value));
+            case BOOLEAN:
+                return String.valueOf(BooleanConverter.convert(value));
+            default:
+                return value;
+            }
+        } catch (FieldConvertError ex) {
+            throw new IllegalArgumentException("cannot convert field " + value + " of type " + fieldType, ex);
+        }
+    }
+
     private String convertToType(FieldType fieldType, String value) {
         switch (fieldType) {
             case UTCTIMESTAMP:
@@ -470,7 +501,7 @@ public class QFJCodec implements IPipelineCodec {
                     throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
                 }
 
-                String value = convertToType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
+                String value = decodeFromType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
                 if (replaceValuesWithEnumNames) {
                     putField(dictionary, builder, field.getTag(), value);
                 } else {
@@ -517,7 +548,7 @@ public class QFJCodec implements IPipelineCodec {
                     throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + fieldMap);
                 }
 
-                String value = convertToType(localDataDictionary.getFieldType(field.getTag()), (String) field.getObject());
+                String value = decodeFromType(localDataDictionary.getFieldType(field.getTag()), (String) field.getObject());
                 if (replaceValuesWithEnumNames) {
                     putField(localDataDictionary, messageBuilder, field.getTag(), value);
                 } else {

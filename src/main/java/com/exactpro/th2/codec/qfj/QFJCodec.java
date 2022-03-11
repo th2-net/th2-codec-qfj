@@ -236,7 +236,7 @@ public class QFJCodec implements IPipelineCodec {
     private Field<?> getField(int tag, String valueName, DataDictionary dataDictionary) {
 
         String value = dataDictionary.getValue(tag, valueName);
-        return new Field<>(tag, value == null ? valueName : convertToType(dataDictionary.getFieldType(tag), value));
+        return new Field<>(tag, value == null ? convertToType(dataDictionary.getFieldType(tag), valueName) : value );
     }
 
     private String convertToType(FieldType fieldType, String value) {
@@ -349,13 +349,13 @@ public class QFJCodec implements IPipelineCodec {
         if (nanos == 0) {
             return UtcTimestampPrecision.SECONDS;
         }
-        if (nanos < 1_000) {
+        if (nanos % 1_000 != 0) {
             return UtcTimestampPrecision.NANOS;
         }
-        if (nanos < 1_000_000) {
+        if (nanos % 1_000_000 != 0) {
             return UtcTimestampPrecision.MICROS;
         }
-        if (nanos < 1_000_000_000) {
+        if (nanos % 1_000_000_000 != 0) {
             return UtcTimestampPrecision.MILLIS;
         }
         throw new IllegalArgumentException("nanos have incorrect value: " + nanos);

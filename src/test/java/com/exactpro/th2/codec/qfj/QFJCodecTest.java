@@ -15,6 +15,19 @@
  */
 package com.exactpro.th2.codec.qfj;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
 import com.exactpro.th2.codec.api.impl.ReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ConnectionID;
@@ -22,20 +35,22 @@ import com.exactpro.th2.common.grpc.Direction;
 import com.exactpro.th2.common.grpc.EventID;
 import com.exactpro.th2.common.grpc.ListValue;
 import com.exactpro.th2.common.grpc.Message;
+import com.exactpro.th2.common.grpc.Message.Builder;
 import com.exactpro.th2.common.grpc.MessageGroup;
 import com.exactpro.th2.common.grpc.MessageID;
 import com.exactpro.th2.common.grpc.MessageMetadata;
 import com.exactpro.th2.common.grpc.RawMessage;
 import com.exactpro.th2.common.grpc.RawMessageMetadata;
 import com.exactpro.th2.common.grpc.Value;
+import com.exactpro.th2.common.value.ValueUtils;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Timestamp;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+
 import quickfix.ConfigError;
 import quickfix.DataDictionary;
 import quickfix.FieldException;
 import quickfix.Group;
+import quickfix.UtcTimestampPrecision;
 import quickfix.field.ApplID;
 import quickfix.field.BeginString;
 import quickfix.field.HopCompID;
@@ -48,36 +63,29 @@ import quickfix.field.PartyID;
 import quickfix.field.PartyIDSource;
 import quickfix.field.PartyRole;
 import quickfix.field.SenderCompID;
+import quickfix.field.SendingTime;
 import quickfix.field.Side;
 import quickfix.field.Signature;
 import quickfix.field.SignatureLength;
 import quickfix.field.TargetCompID;
 import quickfix.field.TestReqID;
+import quickfix.field.converter.UtcTimestampConverter;
 
-import java.time.Instant;
-import java.util.Map;
-import java.util.TreeMap;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-
+// TODO: we need to clean up this mess
 public class QFJCodecTest {
 
     private static QFJCodec codec;
     private static MessageGroup messageGroup;
     private static MessageGroup messageGroupNoHeader;
-    private static long timestampSeconds;
-    private static int timestampNano;
+    private static final Instant timestamp = Instant.now();
+    private static final long timestampSeconds = timestamp.getEpochSecond();
+    private static final int timestampNano = timestamp.getNano();
     private static MessageGroup rawMessageGroup;
     private static String strFixMessage;
 
 
     @BeforeAll
     private static void initMessages() {
-        timestampSeconds = Instant.now().getEpochSecond();
-        timestampNano = Instant.now().getNano();
         String checksumValue;
         String bodyLength;
 
@@ -87,6 +95,7 @@ public class QFJCodecTest {
         fixMessage.getHeader().setField(new SenderCompID("client"));
         fixMessage.getHeader().setField(new TargetCompID("server"));
         fixMessage.getHeader().setField(new MsgType("AE"));
+        fixMessage.getHeader().setUtcTimeStamp(SendingTime.FIELD, LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC), UtcTimestampPrecision.MICROS);
 
         //ADDING HEADER GROUPS
         Group headerGroup = new Group(new NoHops().getField(), new HopCompID().getField());
@@ -175,6 +184,8 @@ public class QFJCodecTest {
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
                         .putFields("SenderCompID", Value.newBuilder().setSimpleValue("client").build())
                         .putFields("TargetCompID", Value.newBuilder().setSimpleValue("server").build())
+                        .putFields("SendingTime", Value.newBuilder().setSimpleValue(
+                                UtcTimestampConverter.convert(LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC), UtcTimestampPrecision.MICROS)).build())
                         .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
                         .putFields("MsgType", Value.newBuilder().setSimpleValue("AE").build())
                         .putFields("NoHops", Value.newBuilder()
@@ -367,7 +378,19 @@ public class QFJCodecTest {
                         .build())
                 .build();
 
-        MessageGroup messageGroupResult = codec.encode(messageGroup, new ReportingContext());
+        var changedSendingTime = messageGroup.toBuilder();
+        var changedHeader = changedSendingTime.getMessagesBuilder(0)
+                .getMessageBuilder()
+                .getFieldsMap()
+                .get(QFJCodec.HEADER)
+                .toBuilder();
+        changedHeader.getMessageValueBuilder()
+                .putFields("SendingTime", ValueUtils.toValue(LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC)));
+        changedSendingTime.getMessagesBuilder(0)
+                .getMessageBuilder()
+                .putFields(QFJCodec.HEADER, changedHeader.build());
+
+        MessageGroup messageGroupResult = codec.encode(changedSendingTime.build(), new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 

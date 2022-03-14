@@ -71,6 +71,8 @@ public class QFJCodecTest {
     private static int timestampNano;
     private static MessageGroup rawMessageGroup;
     private static String strFixMessage;
+    private static String validateFieldsOutOfOrderFixMessage;
+    private static MessageGroup outOrderRawMessageGroup;
 
 
     @BeforeAll
@@ -148,6 +150,44 @@ public class QFJCodecTest {
                 .addMessages(AnyMessage.newBuilder()
                         .setRawMessage(RawMessage.newBuilder()
                                 .setBody(ByteString.copyFrom(bytes))
+                                .setMetadata(RawMessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .build())
+                        .build())
+                .build();
+
+//      INITIATING VALIDATE_FIELDS_OUT_OF_ORDER_FIX_MESSAGE
+        quickfix.Message outOrderFixMessage = new quickfix.Message();
+
+        outOrderFixMessage.getHeader().setField(new BeginString("FIXT.1.1"));
+        outOrderFixMessage.getHeader().setField(new SenderCompID("client"));
+        outOrderFixMessage.getHeader().setField(new TargetCompID("server"));
+        outOrderFixMessage.getHeader().setField(new MsgType("0"));
+        outOrderFixMessage.getHeader().setField(new TestReqID("testReqID")); //body tag in the header
+
+        outOrderFixMessage.setField(new OnBehalfOfCompID("onBehalfOfCompID")); //header tag in the body
+
+        validateFieldsOutOfOrderFixMessage = outOrderFixMessage.toString();
+
+        byte[] rawFixMessage = validateFieldsOutOfOrderFixMessage.getBytes();
+
+        outOrderRawMessageGroup = MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setRawMessage(RawMessage.newBuilder()
+                                .setBody(ByteString.copyFrom(rawFixMessage))
                                 .setMetadata(RawMessageMetadata.newBuilder()
                                         .setId(MessageID.newBuilder()
                                                 .setConnectionId(ConnectionID.newBuilder()
@@ -432,55 +472,10 @@ public class QFJCodecTest {
     }
 
     @Test
-    public void validateFieldsOutOfOrderTest() throws ConfigError {
-
-        QFJCodecSettings settings = new QFJCodecSettings();
-        settings.setCheckFieldsOutOfOrder(true);
-        settings.setFixt(true);
-        QFJCodec codec = new QFJCodec(settings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
-
-        quickfix.Message fixMessage = new quickfix.Message();
-
-        fixMessage.getHeader().setField(new BeginString("FIXT.1.1"));
-        fixMessage.getHeader().setField(new SenderCompID("client"));
-        fixMessage.getHeader().setField(new TargetCompID("server"));
-        fixMessage.getHeader().setField(new MsgType("0"));
-        fixMessage.getHeader().setField(new TestReqID("testReqID")); //body tag in the header
-
-        fixMessage.setField(new OnBehalfOfCompID("onBehalfOfCompID")); //header tag in the body
-        String strFixMessage = fixMessage.toString();
-
-        byte[] bytes = fixMessage.toString().getBytes();
-
-        MessageGroup rawMessageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setRawMessage(RawMessage.newBuilder()
-                                .setBody(ByteString.copyFrom(bytes))
-                                .setMetadata(RawMessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .build())
-                        .build())
-                .build();
-
-
-        String bodyLength = strFixMessage.substring(strFixMessage.indexOf("\0019=") + 3, strFixMessage.indexOf("\001", strFixMessage.indexOf("\0019=") + 1));
-        String checksumValue = strFixMessage.substring(strFixMessage.lastIndexOf("\00110=") + 4, strFixMessage.lastIndexOf("\001"));
+    public void enableValidateFieldsOutOfOrderTest() {
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> {
-            codec.decode(rawMessageGroup);
+            codec.decode(outOrderRawMessageGroup);
         });
 
         assertTrue(thrown
@@ -489,8 +484,21 @@ public class QFJCodecTest {
                 instanceof FieldException); //FieldException: Tag specified out of required order, field=115
 
         assertEquals(thrown.getCause().getCause().getMessage(), "Tag specified out of required order, field=115");
+    }
 
-        //Disabled validateFieldsOutOfOrder
+    @Test
+    public void disabledValidateFieldsOutOfOrder() throws ConfigError {
+
+        QFJCodecSettings anotherSettings = new QFJCodecSettings();
+        anotherSettings.setCheckFieldsOutOfOrder(false);
+        anotherSettings.setFixt(true);
+        QFJCodec anotherCodec = new QFJCodec(anotherSettings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
+
+        String bodyLength = validateFieldsOutOfOrderFixMessage.substring(validateFieldsOutOfOrderFixMessage.indexOf("\0019=") + 3,
+                validateFieldsOutOfOrderFixMessage.indexOf("\001", validateFieldsOutOfOrderFixMessage.indexOf("\0019=") + 1));
+        String checksumValue = validateFieldsOutOfOrderFixMessage.substring(validateFieldsOutOfOrderFixMessage.lastIndexOf("\00110=") + 4,
+                validateFieldsOutOfOrderFixMessage.lastIndexOf("\001"));
+
         Map<String, Value> expectedFieldsMap = new TreeMap<>();
         expectedFieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
@@ -508,7 +516,6 @@ public class QFJCodecTest {
                         .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
                         .build())
                 .build());
-
 
         MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
                 .addMessages(AnyMessage.newBuilder()
@@ -534,12 +541,7 @@ public class QFJCodecTest {
                         .build())
                 .build();
 
-        QFJCodecSettings anotherSettings = new QFJCodecSettings();
-        anotherSettings.setCheckFieldsOutOfOrder(false);
-        anotherSettings.setFixt(true);
-        QFJCodec anotherCodec = new QFJCodec(anotherSettings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
-
-        MessageGroup result = anotherCodec.decode(rawMessageGroup);
+        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup);
         assertEquals(expectedMessageGroup, result);
     }
 }

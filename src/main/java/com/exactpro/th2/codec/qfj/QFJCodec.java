@@ -110,7 +110,7 @@ public class QFJCodec implements IPipelineCodec {
 
         String msgName = message.getMetadata().getMessageType();
         String msgType = transportDataDictionary.getMsgType(msgName) != null ? transportDataDictionary.getMsgType(msgName) : appDataDictionary.getMsgType(msgName);
-        if (msgType == null){
+        if (msgType == null) {
             throw new IllegalStateException("No such message type for message name: " + msgName);
         }
         quickfix.Message fixMessage = getFixMessage(message.getFieldsMap(), msgType);
@@ -285,7 +285,7 @@ public class QFJCodec implements IPipelineCodec {
 
     @NotNull
     private quickfix.Message parseQfjMessage(byte[] rawMessage) throws InvalidMessage {
-        String strMessage = new String(rawMessage,  StandardCharsets.UTF_8);
+        String strMessage = new String(rawMessage, StandardCharsets.UTF_8);
 
         quickfix.Message qfjMessage = new quickfix.Message();
 

@@ -99,7 +99,6 @@ public class QFJCodecTest {
         fixMessage.getHeader().addGroup(headerGroup);
         fixMessage.getHeader().addGroup(headerGroup2);
 
-
         Group noSidesGr1 = new Group(new NoSides().getField(), new Side().getField());
         noSidesGr1.setField(new Side('1'));
 
@@ -144,30 +143,7 @@ public class QFJCodecTest {
         bodyLength = strFixMessage.substring(strFixMessage.indexOf("\0019=") + 3, strFixMessage.indexOf("\001", strFixMessage.indexOf("\0019=") + 1));
         checksumValue = strFixMessage.substring(strFixMessage.lastIndexOf("\00110=") + 4, strFixMessage.lastIndexOf("\001"));
 
-        byte[] bytes = fixMessage.toString().getBytes();
-
-        rawMessageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setRawMessage(RawMessage.newBuilder()
-                                .setBody(ByteString.copyFrom(bytes))
-                                .setMetadata(RawMessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .build())
-                        .build())
-                .build();
+        rawMessageGroup = getRawMessageGroup(strFixMessage);
 
 //      INITIATING VALIDATE_FIELDS_OUT_OF_ORDER_FIX_MESSAGE
         quickfix.Message outOrderFixMessage = new quickfix.Message();
@@ -181,31 +157,7 @@ public class QFJCodecTest {
         outOrderFixMessage.setField(new OnBehalfOfCompID("onBehalfOfCompID")); //header tag in the body
 
         validateFieldsOutOfOrderFixMessage = outOrderFixMessage.toString();
-
-        byte[] rawFixMessage = validateFieldsOutOfOrderFixMessage.getBytes();
-
-        outOrderRawMessageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setRawMessage(RawMessage.newBuilder()
-                                .setBody(ByteString.copyFrom(rawFixMessage))
-                                .setMetadata(RawMessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .build())
-                        .build())
-                .build();
+        outOrderRawMessageGroup = getRawMessageGroup(validateFieldsOutOfOrderFixMessage);
 
         //INITIATING MESSAGE
         Map<String, Value> fieldsMap = new TreeMap<>();
@@ -291,29 +243,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        messageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setMessage(Message.newBuilder()
-                                .putAllFields(fieldsMap)
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .setMetadata(MessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setMessageType("TradeCaptureReport")
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .build())
-                        .build())
-                .build();
+        messageGroup = getMessageGroup(fieldsMap, "TradeCaptureReport");
 
         //INITIATING MESSAGE WITHOUT HEADER
         Map<String, Value> fieldsMapNoHeader = new TreeMap<>();
@@ -345,29 +275,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        messageGroupNoHeader = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setMessage(Message.newBuilder()
-                                .putAllFields(fieldsMapNoHeader)
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .setMetadata(MessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setMessageType("TradeCaptureReport")
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .build())
-                        .build())
-                .build();
+        messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TradeCaptureReport");
     }
 
     @BeforeAll
@@ -377,34 +285,12 @@ public class QFJCodecTest {
         settings.setFixt(true);
         codec = new QFJCodec(settings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
 //        codec = new QFJCodec(new DataDictionary("src/test/resources/FIX44.xml"), null, null);
-
     }
 
     @Test
     public void encodeTest() {
 
-        MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setRawMessage(RawMessage.newBuilder()
-                                .setBody(ByteString.copyFrom(strFixMessage.getBytes()))
-                                .setMetadata(RawMessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .build())
-                        .build())
-                .build();
+        MessageGroup expectedMessageGroup = getRawMessageGroup(strFixMessage);
 
         MessageGroup messageGroupResult = codec.encode(messageGroup);
         assertEquals(expectedMessageGroup, messageGroupResult);
@@ -434,30 +320,8 @@ public class QFJCodecTest {
         noSidesGr1.addGroup(noPartyIDsGr2);
 
         message.addGroup(noSidesGr1);
-        String expectedMessage = message.toString();
 
-        MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
-                .addMessages(AnyMessage.newBuilder()
-                        .setRawMessage(RawMessage.newBuilder()
-                                .setBody(ByteString.copyFrom(expectedMessage.getBytes()))
-                                .setMetadata(RawMessageMetadata.newBuilder()
-                                        .setId(MessageID.newBuilder()
-                                                .setConnectionId(ConnectionID.newBuilder()
-                                                        .setSessionAlias("sessionAlias")
-                                                        .build())
-                                                .setDirection(Direction.SECOND)
-                                                .setSequence(11111111)
-                                                .build())
-                                        .setProtocol("FIX")
-                                        .setTimestamp(Timestamp.newBuilder()
-                                                .setSeconds(timestampSeconds)
-                                                .setNanos(timestampNano)
-                                                .build())
-                                        .build())
-                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
-                                .build())
-                        .build())
-                .build();
+        MessageGroup expectedMessageGroup = getRawMessageGroup(message.toString());
 
         MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader);
         assertEquals(expectedMessageGroup, messageGroupResult);
@@ -517,10 +381,43 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        MessageGroup expectedMessageGroup = MessageGroup.newBuilder()
+        MessageGroup expectedMessageGroup = getMessageGroup(expectedFieldsMap, "Heartbeat");
+
+        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup);
+        assertEquals(expectedMessageGroup, result);
+    }
+
+    private static MessageGroup getRawMessageGroup(String message) {
+        return MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setRawMessage(RawMessage.newBuilder()
+                                .setBody(ByteString.copyFrom(message.getBytes()))
+                                .setMetadata(RawMessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .build())
+                        .build())
+                .build();
+    }
+
+    private static MessageGroup getMessageGroup(Map<String, Value> fieldsMap, String msgType) {
+
+        return MessageGroup.newBuilder()
                 .addMessages(AnyMessage.newBuilder()
                         .setMessage(Message.newBuilder()
-                                .putAllFields(expectedFieldsMap)
+                                .putAllFields(fieldsMap)
                                 .setParentEventId(EventID.newBuilder().setId("ID12345").build())
                                 .setMetadata(MessageMetadata.newBuilder()
                                         .setId(MessageID.newBuilder()
@@ -530,7 +427,7 @@ public class QFJCodecTest {
                                                 .setDirection(Direction.SECOND)
                                                 .setSequence(11111111)
                                                 .build())
-                                        .setMessageType("Heartbeat")
+                                        .setMessageType(msgType)
                                         .setProtocol("FIX")
                                         .setTimestamp(Timestamp.newBuilder()
                                                 .setSeconds(timestampSeconds)
@@ -540,8 +437,5 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build();
-
-        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup);
-        assertEquals(expectedMessageGroup, result);
     }
 }

@@ -16,6 +16,7 @@
 package com.exactpro.th2.codec.qfj;
 
 import com.exactpro.th2.codec.api.IPipelineCodec;
+import com.exactpro.th2.codec.api.IReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ListValue;
 import com.exactpro.th2.common.grpc.Message;
@@ -83,7 +84,7 @@ public class QFJCodec implements IPipelineCodec {
     }
 
     @Override
-    public @NotNull MessageGroup encode(@NotNull MessageGroup messageGroup) {
+    public @NotNull MessageGroup encode(@NotNull MessageGroup messageGroup, @NotNull IReportingContext context) {
 
         var messages = messageGroup.getMessagesList();
 
@@ -217,7 +218,7 @@ public class QFJCodec implements IPipelineCodec {
     }
 
     @Override
-    public @NotNull MessageGroup decode(@NotNull MessageGroup messageGroup) {
+    public @NotNull MessageGroup decode(@NotNull MessageGroup messageGroup, @NotNull IReportingContext context) {
 
         var messages = messageGroup.getMessagesList();
 
@@ -375,5 +376,17 @@ public class QFJCodec implements IPipelineCodec {
             throw new IllegalStateException("No such tag in dictionary " + dictionary + " with tag name: " + key);
         }
         return tag;
+    }
+
+    @NotNull
+    @Override
+    public MessageGroup decode(@NotNull MessageGroup messageGroup) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public MessageGroup encode(@NotNull MessageGroup messageGroup) {
+        return null;
     }
 }

@@ -15,6 +15,7 @@
  */
 package com.exactpro.th2.codec.qfj;
 
+import com.exactpro.th2.codec.api.impl.ReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ConnectionID;
 import com.exactpro.th2.common.grpc.Direction;
@@ -292,7 +293,7 @@ public class QFJCodecTest {
 
         MessageGroup expectedMessageGroup = getRawMessageGroup(strFixMessage);
 
-        MessageGroup messageGroupResult = codec.encode(messageGroup);
+        MessageGroup messageGroupResult = codec.encode(messageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -323,7 +324,7 @@ public class QFJCodecTest {
 
         MessageGroup expectedMessageGroup = getRawMessageGroup(message.toString());
 
-        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader);
+        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -331,7 +332,7 @@ public class QFJCodecTest {
     public void decodeTest() {
         MessageGroup expectedMessageGroup = messageGroup;
 
-        MessageGroup result = codec.decode(rawMessageGroup);
+        MessageGroup result = codec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 
@@ -339,7 +340,7 @@ public class QFJCodecTest {
     public void enableValidateFieldsOutOfOrderTest() {
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> {
-            codec.decode(outOrderRawMessageGroup);
+            codec.decode(outOrderRawMessageGroup, new ReportingContext());
         });
 
         assertTrue(thrown
@@ -383,7 +384,7 @@ public class QFJCodecTest {
 
         MessageGroup expectedMessageGroup = getMessageGroup(expectedFieldsMap, "Heartbeat");
 
-        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup);
+        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 

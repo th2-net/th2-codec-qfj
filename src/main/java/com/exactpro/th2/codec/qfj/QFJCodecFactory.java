@@ -24,25 +24,26 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
-import java.util.List;
+import java.util.Set;
 
 @AutoService(IPipelineCodecFactory.class)
 public class QFJCodecFactory implements IPipelineCodecFactory {
 
-    private static final List<String> PROTOCOLS = List.of("FIX");
+    private static final String PROTOCOL = "FIX";
+    private static final Set<String> PROTOCOLS = Set.of(PROTOCOL);
 
     private IPipelineCodecContext codecContext;
 
-    @NotNull
     @Override
-    public List<String> getProtocols() {
+    @NotNull
+    public Set<String> getProtocols() {
         return PROTOCOLS;
     }
 
     @NotNull
     @Override
     public String getProtocol() {
-        return PROTOCOLS.get(0);
+        return PROTOCOL;
     }
 
     @Override

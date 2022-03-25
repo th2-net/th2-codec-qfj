@@ -19,18 +19,12 @@ import com.exactpro.th2.codec.api.IPipelineCodec;
 import com.exactpro.th2.codec.api.IPipelineCodecContext;
 import com.exactpro.th2.codec.api.IPipelineCodecFactory;
 import com.exactpro.th2.codec.api.IPipelineCodecSettings;
-import com.exactpro.th2.common.schema.dictionary.DictionaryType;
 import com.google.auto.service.AutoService;
-
-import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import quickfix.ConfigError;
-import quickfix.DataDictionary;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.Objects;
 
 @AutoService(IPipelineCodecFactory.class)
 public class QFJCodecFactory implements IPipelineCodecFactory {
@@ -62,20 +56,21 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
 
     @Override
     public @NotNull IPipelineCodec create(@Nullable IPipelineCodecSettings settings) {
-        QFJCodecSettings qfjCodecSettings = ObjectUtils.defaultIfNull((QFJCodecSettings) settings, new QFJCodecSettings());
+        throw new IllegalStateException("Failed to create codec");
+//        QFJCodecSettings qfjCodecSettings = ObjectUtils.defaultIfNull((QFJCodecSettings) settings, new QFJCodecSettings());
 
-        try {
-            if (qfjCodecSettings.isFixt()) {
-                DataDictionary transport = new DataDictionary(codecContext.get(DictionaryType.MAIN));
-                DataDictionary appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL1));
-                return new QFJCodec(qfjCodecSettings, null, transport, appDataDictionary);
-            } else {
-                DataDictionary dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
-                return new QFJCodec(qfjCodecSettings, dataDictionary, null, null);
-            }
-        } catch (ConfigError error) {
-            throw new IllegalStateException("Failed to load DataDictionary", error);
-        }
+//        try {
+//            if (qfjCodecSettings.isFixt()) {
+//                DataDictionary transport = new DataDictionary(codecContext.get(DictionaryType.MAIN));
+//                DataDictionary appDataDictionary = new DataDictionary(codecContext.get(DictionaryType.LEVEL1));
+//                return new QFJCodec(qfjCodecSettings, null, transport, appDataDictionary);
+//            } else {
+//                DataDictionary dataDictionary = new DataDictionary(codecContext.get(DictionaryType.MAIN));
+//                return new QFJCodec(qfjCodecSettings, dataDictionary, null, null);
+//            }
+//        } catch (ConfigError error) {
+//            throw new IllegalStateException("Failed to load DataDictionary", error);
+//        }
     }
 
     @Override

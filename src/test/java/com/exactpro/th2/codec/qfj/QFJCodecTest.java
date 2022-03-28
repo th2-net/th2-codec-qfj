@@ -335,7 +335,7 @@ public class QFJCodecTest {
 
         MessageGroup expectedMessageGroup = getRawMessageGroup(message.toString());
 
-        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader);
+        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -343,7 +343,7 @@ public class QFJCodecTest {
     public void decodeTest() {
         MessageGroup expectedMessageGroup = messageGroup;
 
-        MessageGroup result = codec.decode(rawMessageGroup);
+        MessageGroup result = codec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 
@@ -351,7 +351,7 @@ public class QFJCodecTest {
     public void enableValidateFieldsOutOfOrderTest() {
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> {
-            codec.decode(outOrderRawMessageGroup);
+            codec.decode(outOrderRawMessageGroup, new ReportingContext());
         });
 
         assertTrue(thrown
@@ -395,7 +395,7 @@ public class QFJCodecTest {
 
         MessageGroup expectedMessageGroup = getMessageGroup(expectedFieldsMap, "Heartbeat");
 
-        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup);
+        MessageGroup result = anotherCodec.decode(outOrderRawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 
@@ -422,15 +422,33 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build();
-
-        MessageGroup messageGroupResult = codec.encode(messageGroupNoHeader, new ReportingContext());
-        assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
     private static MessageGroup getMessageGroup(Map<String, Value> fieldsMap, String msgType) {
 
-        MessageGroup result = codec.decode(rawMessageGroup, new ReportingContext());
-        assertEquals(expectedMessageGroup, result);
+        return MessageGroup.newBuilder()
+                .addMessages(AnyMessage.newBuilder()
+                        .setMessage(Message.newBuilder()
+                                .putAllFields(fieldsMap)
+                                .setParentEventId(EventID.newBuilder().setId("ID12345").build())
+                                .setMetadata(MessageMetadata.newBuilder()
+                                        .setId(MessageID.newBuilder()
+                                                .setConnectionId(ConnectionID.newBuilder()
+                                                        .setSessionAlias("sessionAlias")
+                                                        .build())
+                                                .setDirection(Direction.SECOND)
+                                                .setSequence(11111111)
+                                                .build())
+                                        .setMessageType(msgType)
+                                        .setProtocol("FIX")
+                                        .setTimestamp(Timestamp.newBuilder()
+                                                .setSeconds(timestampSeconds)
+                                                .setNanos(timestampNano)
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
     }
 
     @Test

@@ -11,6 +11,8 @@ import quickfix.ConfigError;
 import quickfix.DataDictionary;
 
 import java.io.InputStream;
+import java.util.HashSet;
+import java.util.Set;
 
 public class QFJCodecFactory implements IPipelineCodecFactory {
 
@@ -18,10 +20,11 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
     private DataDictionary transportDataDictionary = null;
     private DataDictionary appDataDictionary = null;
     private QFJCodecSettings settings;
+    private final String protocol = "FIX";
 
     @Override
     public @NotNull String getProtocol() {
-        return "FIX";
+        return protocol;
     }
 
     @Override
@@ -58,5 +61,13 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
     @Override
     public void init(@NotNull InputStream inputStream) {
 
+    }
+
+    @NotNull
+    @Override
+    public Set<String> getProtocols() {
+        Set<String> protocols = new HashSet<>();
+        protocols.add(protocol);
+        return protocols;
     }
 }

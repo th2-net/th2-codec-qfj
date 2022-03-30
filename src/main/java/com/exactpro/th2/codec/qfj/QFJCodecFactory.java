@@ -30,7 +30,7 @@ import quickfix.DataDictionary;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
 
 @AutoService(IPipelineCodecFactory.class)
 public class QFJCodecFactory implements IPipelineCodecFactory {
@@ -41,9 +41,7 @@ public class QFJCodecFactory implements IPipelineCodecFactory {
 
     @NotNull
     @Override
-    public List<String> getProtocols() {
-        return PROTOCOLS;
-    }
+    public Set<String> getProtocols() { return Set.of(PROTOCOLS.get(0)); }
 
     @NotNull
     @Override

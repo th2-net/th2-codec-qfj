@@ -15,19 +15,6 @@
  */
 package com.exactpro.th2.codec.qfj;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Map;
-import java.util.TreeMap;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import com.exactpro.th2.codec.api.impl.ReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ConnectionID;
@@ -35,17 +22,16 @@ import com.exactpro.th2.common.grpc.Direction;
 import com.exactpro.th2.common.grpc.EventID;
 import com.exactpro.th2.common.grpc.ListValue;
 import com.exactpro.th2.common.grpc.Message;
-import com.exactpro.th2.common.grpc.Message.Builder;
 import com.exactpro.th2.common.grpc.MessageGroup;
 import com.exactpro.th2.common.grpc.MessageID;
 import com.exactpro.th2.common.grpc.MessageMetadata;
 import com.exactpro.th2.common.grpc.RawMessage;
 import com.exactpro.th2.common.grpc.RawMessageMetadata;
 import com.exactpro.th2.common.grpc.Value;
-import com.exactpro.th2.common.value.ValueUtils;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Timestamp;
-
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import quickfix.ConfigError;
 import quickfix.DataDictionary;
 import quickfix.FieldException;
@@ -69,7 +55,16 @@ import quickfix.field.Signature;
 import quickfix.field.SignatureLength;
 import quickfix.field.TargetCompID;
 import quickfix.field.TestReqID;
-import quickfix.field.converter.UtcTimestampConverter;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.TreeMap;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // TODO: we need to clean up this mess
 public class QFJCodecTest {

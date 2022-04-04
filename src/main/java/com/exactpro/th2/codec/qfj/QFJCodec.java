@@ -17,6 +17,7 @@ package com.exactpro.th2.codec.qfj;
 
 import com.exactpro.th2.codec.api.IPipelineCodec;
 import com.exactpro.th2.codec.api.IReportingContext;
+import com.exactpro.th2.codec.api.impl.ReportingContext;
 import com.exactpro.th2.common.grpc.AnyMessage;
 import com.exactpro.th2.common.grpc.ListValue;
 import com.exactpro.th2.common.grpc.Message;
@@ -28,13 +29,11 @@ import com.exactpro.th2.common.grpc.Value;
 import com.exactpro.th2.common.value.ValueUtils;
 import com.google.auto.service.AutoService;
 import com.google.protobuf.ByteString;
-
 import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import quickfix.DataDictionary;
 import quickfix.Field;
 import quickfix.FieldConvertError;
@@ -573,12 +572,12 @@ public class QFJCodec implements IPipelineCodec {
     @NotNull
     @Override
     public MessageGroup decode(@NotNull MessageGroup messageGroup) {
-        return null;
+        return decode(messageGroup, new ReportingContext());
     }
 
     @NotNull
     @Override
     public MessageGroup encode(@NotNull MessageGroup messageGroup) {
-        return null;
+        return encode(messageGroup, new ReportingContext());
     }
 }

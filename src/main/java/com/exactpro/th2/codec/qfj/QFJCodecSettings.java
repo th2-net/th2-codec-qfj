@@ -22,6 +22,7 @@ import com.google.auto.service.AutoService;
 public class QFJCodecSettings implements IPipelineCodecSettings {
     private boolean fixt = true;
     private boolean checkFieldsOutOfOrder = true;
+    private boolean replaceValuesWithEnumNames = false;
 
     public boolean isFixt() {
         return fixt;
@@ -37,5 +38,13 @@ public class QFJCodecSettings implements IPipelineCodecSettings {
 
     public void setCheckFieldsOutOfOrder(boolean checkFieldsOutOfOrder) {
         this.checkFieldsOutOfOrder = checkFieldsOutOfOrder;
+    }
+
+    public boolean isReplaceValuesWithEnumNames() {
+        return replaceValuesWithEnumNames;
+    }
+
+    public void setReplaceValuesWithEnumNames(boolean replaceValuesWithEnumNames) {
+        this.replaceValuesWithEnumNames = replaceValuesWithEnumNames;
     }
 }

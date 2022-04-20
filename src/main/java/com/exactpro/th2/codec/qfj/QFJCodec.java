@@ -59,6 +59,8 @@ public class QFJCodec implements IPipelineCodec {
     public static final String PROTOCOL = "FIX";
     public static final String HEADER = "header";
     public static final String TRAILER = "trailer";
+    public static final String SOH = "\001";
+    public static final String BODY_LENGTH = "9=";
 
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;
@@ -296,7 +298,7 @@ public class QFJCodec implements IPipelineCodec {
         String rawString = rawMessage.getBody().toStringUtf8();
         quickfix.Message qfjMessage = new quickfix.Message();
 
-        if (Objects.equals(appDataDictionary, transportDataDictionary)) {
+        if (appDataDictionary == transportDataDictionary) {
             qfjMessage.fromString(rawString, appDataDictionary, true, true);
         } else {
             qfjMessage.fromString(rawString, transportDataDictionary, appDataDictionary, true, true);
@@ -306,8 +308,9 @@ public class QFJCodec implements IPipelineCodec {
             throw new IllegalStateException("Can't decode message '" + rawString + '\'', qfjMessage.getException());
         }
 
-        String bodyLengthFromRaw = rawString.substring(rawString.indexOf("\0019=") + 3,
-                rawString.indexOf("\001", rawString.indexOf("\0019=") + 1));
+        int bodyLengthIdx = rawString.indexOf(SOH + BODY_LENGTH);
+        String bodyLengthFromRaw = rawString.substring(bodyLengthIdx + 3, rawString.indexOf(SOH, bodyLengthIdx + 1));
+
         int expectedBodyLength = qfjMessage.bodyLength();
         if (Integer.parseInt(bodyLengthFromRaw) != expectedBodyLength) {
             throw new InvalidMessage("BodyLength value is invalid: " + bodyLengthFromRaw + ", expected value: " + expectedBodyLength);

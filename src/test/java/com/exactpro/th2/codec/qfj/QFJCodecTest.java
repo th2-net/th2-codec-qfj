@@ -70,7 +70,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class QFJCodecTest {
 
     private static QFJCodec codec;
+    private static QFJCodec codecUseComponents;
     private static MessageGroup messageGroup;
+    private static MessageGroup messageGroupWithComponents;
     private static MessageGroup messageGroupNoHeader;
     private static final Instant timestamp = Instant.now();
     private static final long timestampSeconds = timestamp.getEpochSecond();
@@ -283,6 +285,71 @@ public class QFJCodecTest {
                 .build());
 
         messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TradeCaptureReport");
+
+        //INITIATING MESSAGE WITH COMPONENTS
+        Map<String, Value> componentsFieldsMap = new TreeMap<>();
+        componentsFieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
+                        .putFields("SenderCompID", Value.newBuilder().setSimpleValue("client").build())
+                        .putFields("TargetCompID", Value.newBuilder().setSimpleValue("server").build())
+                        .putFields("SendingTime", Value.newBuilder().setSimpleValue("20220513-08:26:46.995232").build())
+                        .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
+                        .putFields("MsgType", Value.newBuilder().setSimpleValue("D").build())
+                        .build())
+                .build());
+        componentsFieldsMap.put("Parties", Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("NoPartyIDs", Value.newBuilder()
+                                .setListValue(ListValue.newBuilder()
+                                        .addValues(Value.newBuilder()
+                                                .setMessageValue(Message.newBuilder()
+                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party1").build())
+                                                        .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
+                                                        .putFields("PartyRole", Value.newBuilder().setSimpleValue("11").build())
+                                                        .putFields("PtysSubGrp", Value.newBuilder()
+                                                                .setMessageValue(Message.newBuilder()
+                                                                        .putFields("NoPartySubIDs", Value.newBuilder()
+                                                                                .setListValue(ListValue.newBuilder()
+                                                                                        .addValues(Value.newBuilder()
+                                                                                                .setMessageValue(Message.newBuilder()
+                                                                                                        .putFields("PartySubID", Value.newBuilder().setSimpleValue("1").build())
+                                                                                                        .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("2").build())
+                                                                                                        .build())
+                                                                                                .build())
+                                                                                        .addValues(Value.newBuilder()
+                                                                                                .setMessageValue(Message.newBuilder()
+                                                                                                        .putFields("PartySubID", Value.newBuilder().setSimpleValue("3").build())
+                                                                                                        .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("4").build())
+                                                                                                        .build())
+                                                                                                .build())
+                                                                                        .build())
+                                                                                .build())
+                                                                        .build())
+                                                                .build())
+                                                        .build())
+                                                .build())
+                                        .addValues(Value.newBuilder()
+                                                .setMessageValue(Message.newBuilder()
+                                                        .putFields("PartyID", Value.newBuilder().setSimpleValue("party2").build())
+                                                        .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
+                                                        .putFields("PartyRole", Value.newBuilder().setSimpleValue("56").build())
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        componentsFieldsMap.put("ClOrdID", Value.newBuilder().setSimpleValue("1").build());
+        componentsFieldsMap.put(QFJCodec.TRAILER, Value.newBuilder()
+                .setMessageValue(Message.newBuilder()
+                        .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
+                        .putFields("SignatureLength", Value.newBuilder().setSimpleValue("9").build())
+                        .putFields("Signature", Value.newBuilder().setSimpleValue("signature").build())
+                        .build())
+                .build());
+        messageGroupWithComponents = getMessageGroup(componentsFieldsMap, "NewOrderSingle");
+
     }
 
     @BeforeAll
@@ -292,6 +359,12 @@ public class QFJCodecTest {
         settings.setFixt(true);
         codec = new QFJCodec(settings, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
 //        codec = new QFJCodec(new DataDictionary("src/test/resources/FIX44.xml"), null, null);
+        QFJCodecSettings settingsUseComponents = new QFJCodecSettings();
+        settingsUseComponents.setCheckFieldsOutOfOrder(true);
+        settingsUseComponents.setFixt(true);
+        settingsUseComponents.setUseComponents(true);
+        codecUseComponents = new QFJCodec(settingsUseComponents, null, new DataDictionary("src/test/resources/FIXT11.xml"), new DataDictionary("src/test/resources/FIX50SP2.xml"));
+
     }
 
     @Test
@@ -300,6 +373,15 @@ public class QFJCodecTest {
         MessageGroup expectedMessageGroup = getRawMessageGroup(strFixMessage);
 
         MessageGroup messageGroupResult = codec.encode(messageGroup, new ReportingContext());
+        assertEquals(expectedMessageGroup, messageGroupResult);
+    }
+
+    @Test
+    public void encodeComponentsTest() {
+
+        MessageGroup expectedMessageGroup = getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=003\001");
+
+        MessageGroup messageGroupResult = codecUseComponents.encode(messageGroupWithComponents, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
     }
 
@@ -341,6 +423,16 @@ public class QFJCodecTest {
         MessageGroup result = codec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
+
+
+
+//    @Test
+//    public void decodeUseComponentsTest() {
+//        MessageGroup expectedMessageGroup = messageGroupWithComponents;
+//
+//        MessageGroup result = codecUseComponents.decode(getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=003\001"), new ReportingContext());
+//        assertEquals(expectedMessageGroup, result);
+//    }
 
     @Test
     public void enableValidateFieldsOutOfOrderTest() {

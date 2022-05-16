@@ -77,6 +77,7 @@ public class QFJCodec implements IPipelineCodec {
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;
     private final boolean replaceValuesWithEnumNames;
+    private final boolean useComponents;
 
     public QFJCodec(QFJCodecSettings qfjCodecSettings, @Nullable DataDictionary dataDictionary, @Nullable DataDictionary transportDataDictionary, @Nullable DataDictionary appDataDictionary) {
 
@@ -91,6 +92,7 @@ public class QFJCodec implements IPipelineCodec {
             throw new IllegalStateException("No available dictionaries.");
         }
         this.replaceValuesWithEnumNames = qfjCodecSettings.isReplaceValuesWithEnumNames();
+        this.useComponents = qfjCodecSettings.isUseComponents();
     }
 
     private DataDictionary configureDictionary(QFJCodecSettings settings, DataDictionary dictionary) {
@@ -170,6 +172,9 @@ public class QFJCodec implements IPipelineCodec {
             } else if (key.equals(TRAILER)) {
                 quickfix.Message message = (quickfix.Message) qfjFieldMap;
                 setFields(value.getMessageValue().getFieldsMap(), message.getTrailer(), transportDataDictionary, DataDictionary.TRAILER_ID);
+            } else if (useComponents && dataDictionary.isComponent(msgType, key)){
+                quickfix.Message message = (quickfix.Message) qfjFieldMap;
+                setFields(value.getMessageValue().getFieldsMap(), message, dataDictionary, msgType);
             } else {
 
                 int tag = validateTag(dataDictionary.getFieldTag(key), key, dataDictionary.getFullVersion());
@@ -198,8 +203,6 @@ public class QFJCodec implements IPipelineCodec {
         for (Value innerValue : values) {
             Group group = null;
             String innerKey;
-            int innerTag;
-            Value fieldsMapValue;
 
             for (Map.Entry<String, Value> fieldsMap : innerValue.getMessageValue().getFieldsMap().entrySet()) {
 
@@ -207,24 +210,11 @@ public class QFJCodec implements IPipelineCodec {
                     group = new Group(tag, delim);
                 }
                 innerKey = fieldsMap.getKey();
-                innerTag = validateTag(dataDictionary.getFieldTag(innerKey), innerKey, dataDictionary.getFullVersion());
-                fieldsMapValue = fieldsMap.getValue();
 
-
-                if (groupDictionary.isGroup(msgType, innerTag)) {
-                    DataDictionary.GroupInfo groupInfo = groupDictionary.getGroup(msgType, innerTag);
-                    DataDictionary innerGroupDictionary = groupInfo.getDataDictionary();
-                    delim = groupInfo.getDelimiterField();
-                    List<Group> innerGroups = getGroups(fieldsMapValue.getListValue().getValuesList(), innerTag, delim, dataDictionary, innerGroupDictionary, msgType);
-                    for (Group innerGroup : innerGroups) {
-                        group.addGroup(innerGroup);
-                    }
+                if (useComponents && groupDictionary.isComponent(msgType, innerKey)) {
+                    extractComponent(fieldsMap.getValue().getMessageValue().getFieldsMap(), group, dataDictionary, groupDictionary, msgType, tag);
                 } else {
-                    if (!groupDictionary.isField(innerTag)) {
-                        throw new IllegalArgumentException("Invalid tag " + innerKey + " for message group " + dataDictionary.getFieldName(tag));
-                    }
-                    Field<?> groupField = getField(innerTag, fieldsMapValue.getSimpleValue(), dataDictionary);
-                    group.setField(innerTag, groupField);
+                    setGroup(innerKey, group, dataDictionary, groupDictionary, fieldsMap.getValue(), msgType, tag);
                 }
             }
             groups.add(group);
@@ -236,6 +226,39 @@ public class QFJCodec implements IPipelineCodec {
 
         String value = dataDictionary.getValue(tag, valueName);
         return new Field<>(tag, value == null ? convertToType(dataDictionary.getFieldType(tag), valueName) : value );
+    }
+
+    private void extractComponent(Map<String, Value> fieldsMap, Group group, DataDictionary dataDictionary,
+                                  DataDictionary groupDictionary, String msgType, int outerTag){
+        fieldsMap.forEach((key, value) -> {
+
+            if (dataDictionary.isComponent(msgType, key)){ //todo mb groupDict
+                extractComponent(value.getMessageValue().getFieldsMap(), group, dataDictionary, groupDictionary, msgType, outerTag);
+            } else {
+                setGroup(key, group, dataDictionary, groupDictionary, value, msgType, outerTag);
+            }
+        });
+    }
+
+    private void setGroup(String key, Group group, DataDictionary dataDictionary, DataDictionary groupDictionary, Value value, String msgType, int tag){
+
+        var innerTag = validateTag(dataDictionary.getFieldTag(key), key, dataDictionary.getFullVersion());
+
+        if (groupDictionary.isGroup(msgType, innerTag)) {
+            DataDictionary.GroupInfo groupInfo = groupDictionary.getGroup(msgType, innerTag);
+            DataDictionary innerGroupDictionary = groupInfo.getDataDictionary();
+            int delim = groupInfo.getDelimiterField();
+            List<Group> innerGroups = getGroups(value.getListValue().getValuesList(), innerTag, delim, dataDictionary, innerGroupDictionary, msgType);
+            for (Group innerGroup : innerGroups) {
+                group.addGroup(innerGroup);
+            }
+        } else {
+            if (!groupDictionary.isField(innerTag)) {
+                throw new IllegalArgumentException("Invalid tag " + key + " for message group " + dataDictionary.getFieldName(tag));
+            }
+            Field<?> groupField = getField(innerTag, value.getSimpleValue(), dataDictionary);
+            group.setField(innerTag, groupField);
+        }
     }
 
     private String decodeFromType(FieldType fieldType, String value) {
@@ -435,7 +458,7 @@ public class QFJCodec implements IPipelineCodec {
 
 
         Iterator<Field<?>> headerIterator = qfjMessage.getHeader().iterator();
-        Message header = getMessage(headerIterator, transportDataDictionary, qfjMessage.getHeader(), DataDictionary.HEADER_ID);
+        Message header = getMessage(headerIterator, transportDataDictionary, qfjMessage.getHeader(), DataDictionary.HEADER_ID, Message.newBuilder(), null);
         builder.putFields(HEADER, ValueUtils.toValue(header));
 
 
@@ -444,7 +467,7 @@ public class QFJCodec implements IPipelineCodec {
 
 
         Iterator<Field<?>> trailerIterator = qfjMessage.getTrailer().iterator();
-        Message trailer = getMessage(trailerIterator, transportDataDictionary, qfjMessage.getTrailer(), DataDictionary.TRAILER_ID);
+        Message trailer = getMessage(trailerIterator, transportDataDictionary, qfjMessage.getTrailer(), DataDictionary.TRAILER_ID, Message.newBuilder(), null);
         builder.putFields(TRAILER, ValueUtils.toValue(trailer));
 
         return builder
@@ -488,23 +511,29 @@ public class QFJCodec implements IPipelineCodec {
                 return;
             }
 
-            if (dictionary.isGroup(msgType, field.getTag())) {
-                List<Group> groups = qfjMessage.getGroups(field.getTag());
-                @NotNull ListValue.Builder listValue = ValueUtils.listValue();
-                DataDictionary innerDataDictionary = dictionary.getGroup(msgType, field.getTag()).getDataDictionary();
-
-                fillListValue(listValue, innerDataDictionary, groups, msgType);
-                builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
+            if (useComponents && dictionary.isMsgTypeComponent(msgType, field.getTag())) {
+                String componentName = dictionary.getComponentName(msgType, field.getTag());
+                Message innerMessage = getMessage(iterator, dictionary, qfjMessage, msgType, Message.newBuilder(), field);
+                builder.putFields(componentName, ValueUtils.toValue(innerMessage));
             } else {
-                if (!dictionary.isMsgField(msgType, field.getField())) {
-                    throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
-                }
+                if (dictionary.isGroup(msgType, field.getTag())) {
+                    List<Group> groups = qfjMessage.getGroups(field.getTag());
+                    @NotNull ListValue.Builder listValue = ValueUtils.listValue();
+                    DataDictionary innerDataDictionary = dictionary.getGroup(msgType, field.getTag()).getDataDictionary();
 
-                String value = decodeFromType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
-                if (replaceValuesWithEnumNames) {
-                    putField(dictionary, builder, field.getTag(), value);
+                    fillListValue(listValue, innerDataDictionary, groups, msgType);
+                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
                 } else {
-                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
+                    if (!dictionary.isMsgField(msgType, field.getField())) {
+                        throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
+                    }
+
+                    String value = decodeFromType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
+                    if (replaceValuesWithEnumNames) {
+                        putField(dictionary, builder, field.getTag(), value);
+                    } else {
+                        builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
+                    }
                 }
             }
         });
@@ -520,42 +549,58 @@ public class QFJCodec implements IPipelineCodec {
             dataDictionary, List<Group> groups, String msgType) {
         for (Group group : groups) {
             Iterator<Field<?>> innerIterator = group.iterator();
-            Message innerMessage = getMessage(innerIterator, dataDictionary, group, msgType);
+            Message innerMessage = getMessage(innerIterator, dataDictionary, group, msgType, Message.newBuilder(), null);
             listValue.addValues(ValueUtils.toValue(innerMessage));
         }
     }
 
     private Message getMessage(Iterator<Field<?>> iterator, DataDictionary dataDictionary, FieldMap
-            fieldMap, String msgType) {
-        Message.Builder messageBuilder = Message.newBuilder();
+            fieldMap, String msgType, Message.Builder messageBuilder, Field<?> firstField) {
+
+        if (firstField != null) {
+            processField(firstField, dataDictionary, fieldMap, messageBuilder, msgType);
+        }
         iterator.forEachRemaining(field -> {
-            DataDictionary localDataDictionary = transportDataDictionary.isHeaderField(field.getField()) ||
-                    transportDataDictionary.isTrailerField(field.getField()) ? transportDataDictionary : appDataDictionary;
-            if (dataDictionary.isGroup(msgType, field.getTag())) {
-                @NotNull ListValue.Builder listValue = ValueUtils.listValue();
-                List<Group> groups = fieldMap.getGroups(field.getTag());
+            if (useComponents && dataDictionary.isMsgTypeComponent(msgType, field.getTag())){
+                String componentName = dataDictionary.getComponentName(msgType, field.getTag());
 
-                DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(dataDictionary.getGroup(msgType, field.getTag()),
-                        () -> "No GroupInfo for this combination of tag:{}" + field.getTag() + " and msgType:{}" + msgType);
+            Message innerMessage = getMessage(iterator, dataDictionary, fieldMap, msgType, Message.newBuilder(), field);
 
-                DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
-
-                fillListValue(listValue, innerDataDictionary, groups, msgType);
-                messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
+                messageBuilder.putFields(componentName, ValueUtils.toValue(innerMessage));
             } else {
-                if (!fieldMap.isSetField(field.getField())) {
-                    throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + fieldMap);
-                }
-
-                String value = decodeFromType(localDataDictionary.getFieldType(field.getTag()), (String) field.getObject());
-                if (replaceValuesWithEnumNames) {
-                    putField(localDataDictionary, messageBuilder, field.getTag(), value);
-                } else {
-                    messageBuilder.putFields(localDataDictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
-                }
+                processField(field, dataDictionary, fieldMap, messageBuilder, msgType);
             }
         });
         return messageBuilder.build();
+    }
+
+    private void processField(Field<?> field, DataDictionary dataDictionary, FieldMap fieldMap, Message.Builder messageBuilder, String msgType) {
+        DataDictionary localDictionary = transportDataDictionary.isHeaderField(field.getField()) ||
+                transportDataDictionary.isTrailerField(field.getField()) ? transportDataDictionary : appDataDictionary;
+
+        if (dataDictionary.isGroup(msgType, field.getTag())) {
+            @NotNull ListValue.Builder listValue = ValueUtils.listValue();
+            List<Group> groups = fieldMap.getGroups(field.getTag());
+
+            DataDictionary.GroupInfo groupInfo = Objects.requireNonNull(dataDictionary.getGroup(msgType, field.getTag()),
+                    () -> "No GroupInfo for this combination of tag:{}" + field.getTag() + " and msgType:{}" + msgType);
+
+            DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
+
+            fillListValue(listValue, innerDataDictionary, groups, msgType);
+            messageBuilder.putFields(localDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
+        } else {
+            if (!fieldMap.isSetField(field.getField())) {
+                throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + fieldMap);
+            }
+
+            String value = decodeFromType(localDictionary.getFieldType(field.getTag()), (String) field.getObject());
+            if (replaceValuesWithEnumNames) {
+                putField(localDictionary, messageBuilder, field.getTag(), value);
+            } else {
+                messageBuilder.putFields(localDictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
+            }
+        }
     }
 
     @Override

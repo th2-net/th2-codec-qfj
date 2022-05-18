@@ -286,6 +286,25 @@ public class QFJCodecTest {
 
         messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TradeCaptureReport");
 
+        Message noPartySubIDs = Message.newBuilder()
+                .putFields("NoPartySubIDs", Value.newBuilder()
+                        .setListValue(ListValue.newBuilder()
+                                .addValues(Value.newBuilder()
+                                        .setMessageValue(Message.newBuilder()
+                                                .putFields("PartySubID", Value.newBuilder().setSimpleValue("1").build())
+                                                .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("2").build())
+                                                .build())
+                                        .build())
+                                .addValues(Value.newBuilder()
+                                        .setMessageValue(Message.newBuilder()
+                                                .putFields("PartySubID", Value.newBuilder().setSimpleValue("3").build())
+                                                .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("4").build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
         //INITIATING MESSAGE WITH COMPONENTS
         Map<String, Value> componentsFieldsMap = new TreeMap<>();
         componentsFieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
@@ -293,8 +312,8 @@ public class QFJCodecTest {
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
                         .putFields("SenderCompID", Value.newBuilder().setSimpleValue("client").build())
                         .putFields("TargetCompID", Value.newBuilder().setSimpleValue("server").build())
-                        .putFields("SendingTime", Value.newBuilder().setSimpleValue("20220513-08:26:46.995232").build())
-                        .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
+                        .putFields("SendingTime", Value.newBuilder().setSimpleValue("2022-05-13T08:26:46.995232").build())
+                        .putFields("BodyLength", Value.newBuilder().setSimpleValue("160").build())
                         .putFields("MsgType", Value.newBuilder().setSimpleValue("D").build())
                         .build())
                 .build());
@@ -308,24 +327,7 @@ public class QFJCodecTest {
                                                         .putFields("PartyIDSource", Value.newBuilder().setSimpleValue("D").build())
                                                         .putFields("PartyRole", Value.newBuilder().setSimpleValue("11").build())
                                                         .putFields("PtysSubGrp", Value.newBuilder()
-                                                                .setMessageValue(Message.newBuilder()
-                                                                        .putFields("NoPartySubIDs", Value.newBuilder()
-                                                                                .setListValue(ListValue.newBuilder()
-                                                                                        .addValues(Value.newBuilder()
-                                                                                                .setMessageValue(Message.newBuilder()
-                                                                                                        .putFields("PartySubID", Value.newBuilder().setSimpleValue("1").build())
-                                                                                                        .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("2").build())
-                                                                                                        .build())
-                                                                                                .build())
-                                                                                        .addValues(Value.newBuilder()
-                                                                                                .setMessageValue(Message.newBuilder()
-                                                                                                        .putFields("PartySubID", Value.newBuilder().setSimpleValue("3").build())
-                                                                                                        .putFields("PartySubIDType", Value.newBuilder().setSimpleValue("4").build())
-                                                                                                        .build())
-                                                                                                .build())
-                                                                                        .build())
-                                                                                .build())
-                                                                        .build())
+                                                                .setMessageValue(noPartySubIDs)
                                                                 .build())
                                                         .build())
                                                 .build())
@@ -340,16 +342,22 @@ public class QFJCodecTest {
                                 .build())
                         .build())
                 .build());
+        componentsFieldsMap.put("YieldData", Value.newBuilder()
+                .setMessageValue(
+                        Message.newBuilder()
+                                .putFields("YieldType", Value.newBuilder().setSimpleValue("ANNUAL").build())
+                                .putFields("Yield", Value.newBuilder().setSimpleValue("10").build())
+                                .build())
+                .build());
         componentsFieldsMap.put("ClOrdID", Value.newBuilder().setSimpleValue("1").build());
         componentsFieldsMap.put(QFJCodec.TRAILER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
-                        .putFields("CheckSum", Value.newBuilder().setSimpleValue(checksumValue).build())
+                        .putFields("CheckSum", Value.newBuilder().setSimpleValue("212").build())
                         .putFields("SignatureLength", Value.newBuilder().setSimpleValue("9").build())
                         .putFields("Signature", Value.newBuilder().setSimpleValue("signature").build())
                         .build())
                 .build());
         messageGroupWithComponents = getMessageGroup(componentsFieldsMap, "NewOrderSingle");
-
     }
 
     @BeforeAll
@@ -379,7 +387,7 @@ public class QFJCodecTest {
     @Test
     public void encodeComponentsTest() {
 
-        MessageGroup expectedMessageGroup = getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=003\001");
+        MessageGroup expectedMessageGroup = getRawMessageGroup("8=FIXT.1.1\0019=178\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001235=ANNUAL\001236=10\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=221\001");
 
         MessageGroup messageGroupResult = codecUseComponents.encode(messageGroupWithComponents, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
@@ -424,15 +432,13 @@ public class QFJCodecTest {
         assertEquals(expectedMessageGroup, result);
     }
 
+    @Test
+    public void decodeUseComponentsTest() {
+        MessageGroup expectedMessageGroup = messageGroupWithComponents;
 
-
-//    @Test
-//    public void decodeUseComponentsTest() {
-//        MessageGroup expectedMessageGroup = messageGroupWithComponents;
-//
-//        MessageGroup result = codecUseComponents.decode(getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=003\001"), new ReportingContext());
-//        assertEquals(expectedMessageGroup, result);
-//    }
+        MessageGroup result = codecUseComponents.decode(getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\001235=ANNUAL\001236=10\00193=9\00189=signature\00110=212\001"), new ReportingContext());
+        assertEquals(expectedMessageGroup, result);
+    }
 
     @Test
     public void enableValidateFieldsOutOfOrderTest() {

@@ -63,6 +63,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static com.exactpro.th2.common.message.MessageUtils.toJson;
 
@@ -173,8 +174,7 @@ public class QFJCodec implements IPipelineCodec {
                 quickfix.Message message = (quickfix.Message) qfjFieldMap;
                 setFields(value.getMessageValue().getFieldsMap(), message.getTrailer(), transportDataDictionary, DataDictionary.TRAILER_ID);
             } else if (useComponents && dataDictionary.isComponent(msgType, key)){
-                quickfix.Message message = (quickfix.Message) qfjFieldMap;
-                setFields(value.getMessageValue().getFieldsMap(), message, dataDictionary, msgType);
+                setFields(value.getMessageValue().getFieldsMap(), qfjFieldMap, dataDictionary, msgType);
             } else {
 
                 int tag = validateTag(dataDictionary.getFieldTag(key), key, dataDictionary.getFullVersion());
@@ -231,8 +231,7 @@ public class QFJCodec implements IPipelineCodec {
     private void extractComponent(Map<String, Value> fieldsMap, Group group, DataDictionary dataDictionary,
                                   DataDictionary groupDictionary, String msgType, int outerTag){
         fieldsMap.forEach((key, value) -> {
-
-            if (dataDictionary.isComponent(msgType, key)){ //todo mb groupDict
+            if (dataDictionary.isComponent(msgType, key)){
                 extractComponent(value.getMessageValue().getFieldsMap(), group, dataDictionary, groupDictionary, msgType, outerTag);
             } else {
                 setGroup(key, group, dataDictionary, groupDictionary, value, msgType, outerTag);
@@ -458,7 +457,7 @@ public class QFJCodec implements IPipelineCodec {
 
 
         Iterator<Field<?>> headerIterator = qfjMessage.getHeader().iterator();
-        Message header = getMessage(headerIterator, transportDataDictionary, qfjMessage.getHeader(), DataDictionary.HEADER_ID, Message.newBuilder(), null);
+        Message header = getMessage(headerIterator, transportDataDictionary, qfjMessage.getHeader(), DataDictionary.HEADER_ID, Message.newBuilder(), null, null, new ArrayList<>(1));
         builder.putFields(HEADER, ValueUtils.toValue(header));
 
 
@@ -467,7 +466,7 @@ public class QFJCodec implements IPipelineCodec {
 
 
         Iterator<Field<?>> trailerIterator = qfjMessage.getTrailer().iterator();
-        Message trailer = getMessage(trailerIterator, transportDataDictionary, qfjMessage.getTrailer(), DataDictionary.TRAILER_ID, Message.newBuilder(), null);
+        Message trailer = getMessage(trailerIterator, transportDataDictionary, qfjMessage.getTrailer(), DataDictionary.TRAILER_ID, Message.newBuilder(), null, null, new ArrayList<>(1));
         builder.putFields(TRAILER, ValueUtils.toValue(trailer));
 
         return builder
@@ -504,39 +503,34 @@ public class QFJCodec implements IPipelineCodec {
             qfjMessage, String msgType) {
 
         DataDictionary dictionary = qfjMessage.isAdmin() ? transportDataDictionary : appDataDictionary;
-
         iterator.forEachRemaining(field -> {
             if (field == null) {
                 LOGGER.warn("Null filed in the message with type {}, qfj msg {}", msgType, qfjMessage);
                 return;
             }
-
-            if (useComponents && dictionary.isMsgTypeComponent(msgType, field.getTag())) {
-                String componentName = dictionary.getComponentName(msgType, field.getTag());
-                Message innerMessage = getMessage(iterator, dictionary, qfjMessage, msgType, Message.newBuilder(), field);
-                builder.putFields(componentName, ValueUtils.toValue(innerMessage));
-            } else {
-                if (dictionary.isGroup(msgType, field.getTag())) {
-                    List<Group> groups = qfjMessage.getGroups(field.getTag());
-                    @NotNull ListValue.Builder listValue = ValueUtils.listValue();
-                    DataDictionary innerDataDictionary = dictionary.getGroup(msgType, field.getTag()).getDataDictionary();
-
-                    fillListValue(listValue, innerDataDictionary, groups, msgType);
-                    builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(listValue));
-                } else {
-                    if (!dictionary.isMsgField(msgType, field.getField())) {
-                        throw new IllegalArgumentException("Invalid filed=" + dictionary.getFieldName(field.getField()) + '(' + field.getTag() + ") for message type " + msgType);
-                    }
-
-                    String value = decodeFromType(dictionary.getFieldType(field.getTag()), (String) field.getObject());
-                    if (replaceValuesWithEnumNames) {
-                        putField(dictionary, builder, field.getTag(), value);
-                    } else {
-                        builder.putFields(dictionary.getFieldName(field.getTag()), ValueUtils.toValue(value));
-                    }
-                }
-            }
+            checkField(dictionary, iterator, field, qfjMessage, builder, msgType);
         });
+    }
+
+    private void checkField(DataDictionary dictionary, Iterator<Field<?>> iterator, Field<?> field, FieldMap qfjMessage,
+                            Message.Builder builder, String msgType) {
+        if (useComponents && dictionary.isMsgTypeComponent(msgType, field.getTag())) {
+            List<Field<?>> pushedBack = putComponent(iterator, field, dictionary, qfjMessage, msgType, builder);
+            if (pushedBack.size() != 0 && pushedBack.get(0) != null) {
+                checkField(dictionary, iterator, pushedBack.get(0), qfjMessage, builder, msgType);
+            }
+        } else {
+            processField(field, dictionary, qfjMessage, builder, msgType, null);
+        }
+    }
+
+    private List<Field<?>> putComponent(Iterator<Field<?>> iterator, Field<?> field, DataDictionary dictionary,
+                                        FieldMap qfjMessage, String msgType, Message.Builder builder) {
+        String componentName = dictionary.getComponentName(msgType, field.getTag());
+        List<Field<?>> pushedBack = new ArrayList<>(1);
+        Message innerMessage = getMessage(iterator, dictionary, qfjMessage, msgType, Message.newBuilder(), field, componentName, pushedBack);
+        builder.putFields(componentName, ValueUtils.toValue(innerMessage));
+        return pushedBack;
     }
 
     private void putField(DataDictionary dictionary, Message.Builder builder, int tag, String value) {
@@ -546,35 +540,55 @@ public class QFJCodec implements IPipelineCodec {
     }
 
     private void fillListValue(ListValue.Builder listValue, DataDictionary
-            dataDictionary, List<Group> groups, String msgType) {
+            dataDictionary, List<Group> groups, String msgType, String componentName) {
+
         for (Group group : groups) {
             Iterator<Field<?>> innerIterator = group.iterator();
-            Message innerMessage = getMessage(innerIterator, dataDictionary, group, msgType, Message.newBuilder(), null);
+            List<Field<?>> pushedBack = new ArrayList<>(1);
+            Message innerMessage = getMessage(innerIterator, dataDictionary, group, msgType, Message.newBuilder(), null, componentName, pushedBack);
             listValue.addValues(ValueUtils.toValue(innerMessage));
         }
     }
 
+    private boolean checkComponentGroups(String componentsName, int tag, String msgType) {
+        DataDictionary localDictionary = transportDataDictionary.isHeaderField(tag) ||
+                transportDataDictionary.isTrailerField(tag) ? transportDataDictionary : appDataDictionary;
+
+        Set<Integer> componentFields = localDictionary.getComponentFields(componentsName);
+        return componentFields.stream()
+                .anyMatch(x ->
+                    localDictionary.getGroup(msgType, x) != null
+                            && localDictionary.getGroup(msgType, x).getDataDictionary().isField(tag));
+    }
+
     private Message getMessage(Iterator<Field<?>> iterator, DataDictionary dataDictionary, FieldMap
-            fieldMap, String msgType, Message.Builder messageBuilder, Field<?> firstField) {
+            fieldMap, String msgType, Message.Builder messageBuilder, Field<?> firstField, String componentName, List<Field<?>> pushedBack) {
 
         if (firstField != null) {
-            processField(firstField, dataDictionary, fieldMap, messageBuilder, msgType);
+            processField(firstField, dataDictionary, fieldMap, messageBuilder, msgType, componentName);
         }
         iterator.forEachRemaining(field -> {
-            if (useComponents && dataDictionary.isMsgTypeComponent(msgType, field.getTag())){
-                String componentName = dataDictionary.getComponentName(msgType, field.getTag());
 
-            Message innerMessage = getMessage(iterator, dataDictionary, fieldMap, msgType, Message.newBuilder(), field);
+            String fieldComponent = dataDictionary.getComponentName(msgType, field.getTag());
+            if (useComponents && fieldComponent != null && !fieldComponent.equals(componentName)) {
+                if (dataDictionary.isComponentField(componentName, field.getTag())
+                        || (dataDictionary.isMsgTypeComponent(msgType, field.getTag())
+                        && checkComponentGroups(componentName, field.getTag(), msgType) )){
 
-                messageBuilder.putFields(componentName, ValueUtils.toValue(innerMessage));
+                    putComponent(iterator, field, dataDictionary, fieldMap, msgType, messageBuilder);
+                } else {
+                    pushedBack.add(field);
+                }
             } else {
-                processField(field, dataDictionary, fieldMap, messageBuilder, msgType);
+                processField(field, dataDictionary, fieldMap, messageBuilder, msgType, componentName);
             }
         });
         return messageBuilder.build();
     }
 
-    private void processField(Field<?> field, DataDictionary dataDictionary, FieldMap fieldMap, Message.Builder messageBuilder, String msgType) {
+    private void processField(Field<?> field, DataDictionary dataDictionary, FieldMap fieldMap,
+                              Message.Builder messageBuilder, String msgType, String componentName) {
+
         DataDictionary localDictionary = transportDataDictionary.isHeaderField(field.getField()) ||
                 transportDataDictionary.isTrailerField(field.getField()) ? transportDataDictionary : appDataDictionary;
 
@@ -587,7 +601,7 @@ public class QFJCodec implements IPipelineCodec {
 
             DataDictionary innerDataDictionary = groupInfo.getDataDictionary();
 
-            fillListValue(listValue, innerDataDictionary, groups, msgType);
+            fillListValue(listValue, innerDataDictionary, groups, msgType, componentName);
             messageBuilder.putFields(localDictionary.getFieldName(field.getTag()), Value.newBuilder().setListValue(listValue).build());
         } else {
             if (!fieldMap.isSetField(field.getField())) {

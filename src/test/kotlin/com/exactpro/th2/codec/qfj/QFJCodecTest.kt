@@ -1,26 +1,40 @@
+/*
+ * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.exactpro.th2.codec.qfj
 
 import com.exactpro.th2.common.grpc.AnyMessage
-import com.exactpro.th2.common.grpc.ConnectionID
 import com.exactpro.th2.common.grpc.Direction
-import com.exactpro.th2.common.grpc.EventID
-import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
-import com.exactpro.th2.common.grpc.MessageID
-import com.exactpro.th2.common.grpc.MessageMetadata
-import com.exactpro.th2.common.grpc.RawMessage
-import com.exactpro.th2.common.grpc.RawMessageMetadata
-import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.message.addField
+import com.exactpro.th2.common.message.direction
 import com.exactpro.th2.common.message.message
+import com.exactpro.th2.common.message.messageType
+import com.exactpro.th2.common.message.plusAssign
+import com.exactpro.th2.common.message.sequence
+import com.exactpro.th2.common.message.sessionAlias
 import com.exactpro.th2.common.message.set
+import com.exactpro.th2.common.message.toTimestamp
 import com.exactpro.th2.common.value.toValue
 import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
+import java.time.Instant
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import quickfix.ConfigError
 import quickfix.DataDictionary
 import quickfix.FieldException
@@ -29,46 +43,32 @@ import quickfix.field.ApplID
 import quickfix.field.BeginString
 import quickfix.field.HopCompID
 import quickfix.field.MsgType
+import quickfix.field.NoHops
+import quickfix.field.NoPartyIDs
+import quickfix.field.NoSides
 import quickfix.field.OnBehalfOfCompID
 import quickfix.field.PartyID
 import quickfix.field.PartyIDSource
 import quickfix.field.PartyRole
 import quickfix.field.SenderCompID
 import quickfix.field.Side
+import quickfix.field.Signature
 import quickfix.field.SignatureLength
 import quickfix.field.TargetCompID
 import quickfix.field.TestReqID
-import java.time.Instant
-import java.util.TreeMap
-import org.junit.jupiter.api.TestInstance
-import quickfix.field.NoHops
-import quickfix.field.NoPartyIDs
-import quickfix.field.NoSides
-import quickfix.field.Signature
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class QFJCodecTest {
 
-    private lateinit var codec: QFJCodec
-    private lateinit var messageGroup: MessageGroup
-    private lateinit var messageGroupNoHeader: MessageGroup
-    private lateinit var rawMessageGroup: MessageGroup
-    private lateinit var strFixMessage: String
-    private var timestampSeconds = Instant.now().epochSecond
-    private var timestampNano = Instant.now().nano
+    private val codec: QFJCodec
+    private val messageGroup: MessageGroup
+    private val rawMessageGroup: MessageGroup
+    private val messageGroupNoHeader: MessageGroup
+    private val strFixMessage: String
+    private val timestamp: Timestamp = Instant.now().toTimestamp()
     private var checksumValue: String = ""
 
-    private fun getBodyLength(message: String): String {
-        return message.substringAfter("\u00019=")
-            .substringBefore("\u0001")
-    }
-
-    private fun getChecksum(message: String?): String {
-        return message!!.substring(message.lastIndexOf("\u000110=") + 4, message.lastIndexOf("\u0001"))
-    }
-
-    @BeforeAll
-    private fun initMessages() {
+    init {
         val fixMessage = quickfix.Message()
         fixMessage.header.apply {
             setField(BeginString("FIXT.1.1"))
@@ -126,22 +126,22 @@ class QFJCodecTest {
         val bytes = fixMessage.toString().toByteArray()
         rawMessageGroup = getRawMessageGroup(bytes)
 
-        val fieldsMap: MutableMap<String, Value> = HashMap()
-        fieldsMap[QFJCodec.HEADER] = message().apply {
-            this["BeginString"] = "FIXT.1.1"
-            this["SenderCompID"] = "client"
-            this["TargetCompID"] = "server"
-            this["BodyLength"] = bodyLength
-            this["MsgType"] = "AE"
-            this["NoHops"] = listOf(
-                message().addField("HopCompID", 1),
-                message().addField("HopCompID", 2)
-            )
-        }.toValue()
-        fieldsMap["ApplID"] = "111".toValue()
-        fieldsMap["NoSides"] = ListValue.newBuilder().apply {
-            listOf(
-                addValues(message().apply {
+        val msgBuilder = message().apply {
+            this[QFJCodec.HEADER] = message().apply {
+                this["BeginString"] = "FIXT.1.1"
+                this["SenderCompID"] = "client"
+                this["TargetCompID"] = "server"
+                this["BodyLength"] = bodyLength
+                this["MsgType"] = "AE"
+                this["NoHops"] = listOf(
+                    message().addField("HopCompID", 1),
+                    message().addField("HopCompID", 2)
+                )
+            }.toValue()
+
+            this["ApplID"] = "111".toValue()
+            this["NoSides"] = listOf(
+                message().apply {
                     this["Side"] = "1"
                     this["NoPartyIDs"] = listOf(
                         message().apply {
@@ -154,9 +154,9 @@ class QFJCodecTest {
                             this["PartyIDSource"] = "D"
                             this["PartyRole"] = "56"
                         }
-                    )
-                }.toValue()),
-                addValues(message().apply {
+                    ).toValue()
+                },
+                message().apply {
                     this["Side"] = "2"
                     this["NoPartyIDs"] = listOf(
                         message().apply {
@@ -169,26 +169,24 @@ class QFJCodecTest {
                             this["PartyIDSource"] = "D"
                             this["PartyRole"] = "56"
                         }
-                    )
-                }.toValue())
-            )
-        }.toValue()
+                    ).toValue()
+                }
+            ).toValue()
 
-        fieldsMap[QFJCodec.TRAILER] = message().apply {
-            this["CheckSum"] = checksumValue
-            this["SignatureLength"] = "9"
-            this["Signature"] = "signature"
-        }.toValue()
-
+            this[QFJCodec.TRAILER] = message().apply {
+                this["CheckSum"] = checksumValue
+                this["SignatureLength"] = "9"
+                this["Signature"] = "signature"
+            }.toValue()
+        }
 
         //INITIATING MESSAGE
-        messageGroup = getMessageGroup(fieldsMap, "TradeCaptureReport")
+        messageGroup = getMessageGroup(msgBuilder, "TradeCaptureReport")
 
         //INITIATING MESSAGE WITHOUT HEADER
-        val fieldsMapNoHeader: MutableMap<String, Value> = TreeMap()
-        fieldsMapNoHeader["NoSides"] = ListValue.newBuilder().apply {
-            addValues(Value.newBuilder().apply {
-                messageValue = Message.newBuilder().apply {
+        val msgBuilderNoHeader = message().apply {
+            this["NoSides"] = listOf(
+                message().apply {
                     this["Side"] = "1"
                     this["NoPartyIDs"] = listOf(
                         message().apply {
@@ -202,70 +200,13 @@ class QFJCodecTest {
                             this["PartyRole"] = "56"
                         }
                     )
-                }.build()
-            }.build())
-        }.toValue()
-
-        messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TradeCaptureReport")
+                }
+            ).toValue()
+        }
+        messageGroupNoHeader = getMessageGroup(msgBuilderNoHeader, "TradeCaptureReport")
     }
 
-    private fun getMessageGroup(fieldsMap: MutableMap<String, Value>, msgType: String): MessageGroup {
-        return MessageGroup.newBuilder()
-            .addMessages(AnyMessage.newBuilder().apply {
-                message = Message.newBuilder().apply {
-                    putAllFields(fieldsMap)
-                    parentEventId = EventID.newBuilder().apply {
-                        id = "ID12345"
-                    }.build()
-                    metadata = MessageMetadata.newBuilder().apply {
-                        id = MessageID.newBuilder().apply {
-                            connectionId = ConnectionID.newBuilder().apply {
-                                sessionAlias = "sessionAlias"
-                            }.build()
-                            direction = Direction.SECOND
-                            sequence = 11111111
-                        }.build()
-                        messageType = msgType
-                        protocol = "FIX"
-                        timestamp = Timestamp.newBuilder().apply {
-                            seconds = timestampSeconds
-                            nanos = timestampNano
-                        }.build()
-                    }.build()
-                }.build()
-            }.build())
-            .build()
-    }
-
-    private fun getRawMessageGroup(msg: ByteArray): MessageGroup {
-        return MessageGroup.newBuilder()
-            .addMessages(AnyMessage.newBuilder().apply {
-                rawMessage = RawMessage.newBuilder().apply {
-                    body = ByteString.copyFrom(msg)
-                    parentEventId = EventID.newBuilder().apply {
-                        id = "ID12345"
-                    }.build()
-                    metadata = RawMessageMetadata.newBuilder().apply {
-                        id = MessageID.newBuilder().apply {
-                            connectionId = ConnectionID.newBuilder().apply {
-                                sessionAlias = "sessionAlias"
-                            }.build()
-                            direction = Direction.SECOND
-                            sequence = 11111111
-                        }.build()
-                        protocol = "FIX"
-                        timestamp = Timestamp.newBuilder().apply {
-                            seconds = timestampSeconds
-                            nanos = timestampNano
-                        }.build()
-                    }.build()
-                }.build()
-            }.build())
-            .build()
-    }
-
-    @BeforeAll
-    private fun initQFJCodec() {
+    init {
         val settings = QFJCodecSettings()
         settings.isCheckFieldsOutOfOrder = true
         settings.isFixt = true
@@ -276,6 +217,46 @@ class QFJCodecTest {
             DataDictionary("src/test/resources/FIX50SP2.xml")
         )
     }
+
+    private fun getBodyLength(message: String): String {
+        return message.substringAfter("\u00019=")
+            .substringBefore('\u0001')
+    }
+
+    private fun getChecksum(message: String): String {
+        return message.substringAfterLast("\u000110=").substringBefore('\u0001')
+    }
+
+    private fun getMessageGroup(msgBuilder: Message.Builder, msgType: String) =
+        MessageGroup.newBuilder().apply {
+            this += AnyMessage.newBuilder().messageBuilder.apply {
+                parentEventIdBuilder.id = "ID12345"
+                messageType = msgType
+                sessionAlias = "sessionAlias"
+                direction = Direction.SECOND
+                sequence = 11111111
+                metadataBuilder.apply {
+                    protocol = "FIX"
+                    timestamp = this@QFJCodecTest.timestamp
+                }
+                putAllFields(msgBuilder.fieldsMap)
+            }
+        }.build()
+
+    private fun getRawMessageGroup(msg: ByteArray): MessageGroup =
+        MessageGroup.newBuilder().apply {
+            this += AnyMessage.newBuilder().rawMessageBuilder.apply {
+                parentEventIdBuilder.id = "ID12345"
+                sessionAlias = "sessionAlias"
+                direction = Direction.SECOND
+                sequence = 11111111
+                metadataBuilder.apply {
+                    timestamp = this@QFJCodecTest.timestamp
+                    protocol = "FIX"
+                }
+                body = ByteString.copyFrom(msg)
+            }
+        }.build()
 
     @Test
     fun encodeTest() {
@@ -344,39 +325,30 @@ class QFJCodecTest {
         val bodyLength = getBodyLength(strFixMessage)
         val checksumValue = getChecksum(strFixMessage)
 
-        val thrown = Assertions.assertThrows(
-            IllegalStateException::class.java
-        ) { codec.decode(rawMessageGroup) }
-        Assertions.assertTrue(
-            thrown
-                .cause //IllegalStateException: Cannot decode raw message
-            !!.cause //IllegalStateException: Cannot decode parsed message
-                    is FieldException
-        ) //FieldException: Tag specified out of required order, field=115
-        Assertions.assertEquals(thrown.cause!!.cause!!.message, "Tag specified out of required order, field=115")
+        val thrown = Assertions.assertThrows(IllegalStateException::class.java) {
+            codec.decode(rawMessageGroup)
+        }
+        val fieldException = Assertions.assertInstanceOf(FieldException::class.java, thrown.cause?.cause)
+        Assertions.assertEquals(fieldException.message, "Tag specified out of required order, field=115")
 
         //Disabled validateFieldsOutOfOrder
-        val expectedFieldsMap: MutableMap<String, Value> = TreeMap()
-        expectedFieldsMap[QFJCodec.HEADER] = Value.newBuilder()
-            .setMessageValue(
-                Message.newBuilder().apply {
-                    this["BeginString"] = "FIXT.1.1"
-                    this["SenderCompID"] = "client"
-                    this["TargetCompID"] = "server"
-                    this["BodyLength"] = bodyLength
-                    this["OnBehalfOfCompID"] = "onBehalfOfCompID"
-                    this["MsgType"] = "0"
-                    build()
-                })
-            .build()
-        expectedFieldsMap["TestReqID"] = Value.newBuilder().setSimpleValue("testReqID").build()
-        expectedFieldsMap[QFJCodec.TRAILER] = Value.newBuilder().apply {
-            messageValue = Message.newBuilder().apply {
-                this["CheckSum"] = checksumValue
-            }.build()
-        }.build()
+        val expectedMsgBuilder = message().apply {
+            this[QFJCodec.HEADER] = message().apply {
+                this["BeginString"] = "FIXT.1.1"
+                this["SenderCompID"] = "client"
+                this["TargetCompID"] = "server"
+                this["BodyLength"] = bodyLength
+                this["OnBehalfOfCompID"] = "onBehalfOfCompID"
+                this["MsgType"] = "0"
+            }.toValue()
 
-        val expectedMessageGroup = getMessageGroup(expectedFieldsMap, "Heartbeat")
+            this["TestReqID"] = "testReqID".toValue()
+
+            this[QFJCodec.TRAILER] = message()
+                .addField("CheckSum", checksumValue).toValue()
+        }
+
+        val expectedMessageGroup = getMessageGroup(expectedMsgBuilder, "Heartbeat")
 
         val anotherCodec = QFJCodec(
             QFJCodecSettings().apply {

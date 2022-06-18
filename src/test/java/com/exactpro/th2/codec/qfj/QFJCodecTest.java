@@ -59,6 +59,7 @@ import quickfix.field.TestReqID;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -167,7 +168,7 @@ public class QFJCodecTest {
         outOrderRawMessageGroup = getRawMessageGroup(validateFieldsOutOfOrderFixMessage);
 
         //INITIATING MESSAGE
-        Map<String, Value> fieldsMap = new TreeMap<>();
+        Map<String, Value> fieldsMap = new HashMap<>();
         fieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
@@ -255,7 +256,7 @@ public class QFJCodecTest {
         messageGroup = getMessageGroup(fieldsMap, "TradeCaptureReport");
 
         //INITIATING MESSAGE WITHOUT HEADER
-        Map<String, Value> fieldsMapNoHeader = new TreeMap<>();
+        Map<String, Value> fieldsMapNoHeader = new HashMap<>();
         fieldsMapNoHeader.put("NoSides", Value.newBuilder()
                 .setListValue(ListValue.newBuilder()
                         .addValues(Value.newBuilder()
@@ -306,7 +307,7 @@ public class QFJCodecTest {
                 .build();
 
         //INITIATING MESSAGE WITH COMPONENTS
-        Map<String, Value> componentsFieldsMap = new TreeMap<>();
+        Map<String, Value> componentsFieldsMap = new HashMap<>();
         componentsFieldsMap.put(QFJCodec.HEADER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
@@ -317,6 +318,7 @@ public class QFJCodecTest {
                         .putFields("MsgType", Value.newBuilder().setSimpleValue("D").build())
                         .build())
                 .build());
+        componentsFieldsMap.put("GTBookingInst", Value.newBuilder().setSimpleValue("427").build());
         componentsFieldsMap.put("Parties", Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
                         .putFields("NoPartyIDs", Value.newBuilder()
@@ -352,7 +354,7 @@ public class QFJCodecTest {
         componentsFieldsMap.put("ClOrdID", Value.newBuilder().setSimpleValue("1").build());
         componentsFieldsMap.put(QFJCodec.TRAILER, Value.newBuilder()
                 .setMessageValue(Message.newBuilder()
-                        .putFields("CheckSum", Value.newBuilder().setSimpleValue("212").build())
+                        .putFields("CheckSum", Value.newBuilder().setSimpleValue("076").build())
                         .putFields("SignatureLength", Value.newBuilder().setSimpleValue("9").build())
                         .putFields("Signature", Value.newBuilder().setSimpleValue("signature").build())
                         .build())
@@ -387,7 +389,7 @@ public class QFJCodecTest {
     @Test
     public void encodeComponentsTest() {
 
-        MessageGroup expectedMessageGroup = getRawMessageGroup("8=FIXT.1.1\0019=178\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001235=ANNUAL\001236=10\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=221\001");
+        MessageGroup expectedMessageGroup = getRawMessageGroup("8=FIXT.1.1\0019=186\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001235=ANNUAL\001236=10\001427=427\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\00193=9\00189=signature\00110=084\001");
 
         MessageGroup messageGroupResult = codecUseComponents.encode(messageGroupWithComponents, new ReportingContext());
         assertEquals(expectedMessageGroup, messageGroupResult);
@@ -436,7 +438,7 @@ public class QFJCodecTest {
     public void decodeUseComponentsTest() {
         MessageGroup expectedMessageGroup = messageGroupWithComponents;
 
-        MessageGroup result = codecUseComponents.decode(getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\001235=ANNUAL\001236=10\00193=9\00189=signature\00110=212\001"), new ReportingContext());
+        MessageGroup result = codecUseComponents.decode(getRawMessageGroup("8=FIXT.1.1\0019=160\00135=D\00149=client\00152=20220513-08:26:46.995232\00156=server\00111=1\001453=2\001448=party1\001447=D\001452=11\001802=2\001523=1\001803=2\001523=3\001803=4\001448=party2\001447=D\001452=56\001235=ANNUAL\001236=10\001427=427\00193=9\00189=signature\00110=076\001"), new ReportingContext());
         assertEquals(expectedMessageGroup, result);
     }
 

@@ -456,19 +456,16 @@ public class QFJCodec implements IPipelineCodec {
         Message.Builder builder = Message.newBuilder();
 
 
-        Iterator<Field<?>> headerIterator = qfjMessage.getHeader().iterator();
-        PushbackIterator<Field<?>> pushbackHeaderIterator = PushbackIterator.pushbackIterator(headerIterator);
+        PushbackIterator<Field<?>> pushbackHeaderIterator = PushbackIterator.pushbackIterator(qfjMessage.getHeader().iterator());
         Message header = getMessage(pushbackHeaderIterator, transportDataDictionary, transportDataDictionary, qfjMessage.getHeader(), DataDictionary.HEADER_ID, Message.newBuilder(), null, null, null);
         builder.putFields(HEADER, ValueUtils.toValue(header));
 
 
-        Iterator<Field<?>> iterator = qfjMessage.iterator();
-        PushbackIterator<Field<?>> pushbackIterator = PushbackIterator.pushbackIterator(iterator);
+        PushbackIterator<Field<?>> pushbackIterator = PushbackIterator.pushbackIterator(qfjMessage.iterator());
         fillMessageBody(pushbackIterator, builder, qfjMessage, msgType);
 
 
-        Iterator<Field<?>> trailerIterator = qfjMessage.getTrailer().iterator();
-        PushbackIterator<Field<?>> pushbackTrailerIterator = PushbackIterator.pushbackIterator(trailerIterator);
+        PushbackIterator<Field<?>> pushbackTrailerIterator = PushbackIterator.pushbackIterator(qfjMessage.getTrailer().iterator());
         Message trailer = getMessage(pushbackTrailerIterator, transportDataDictionary, transportDataDictionary, qfjMessage.getTrailer(), DataDictionary.TRAILER_ID, Message.newBuilder(), null, null, null);
         builder.putFields(TRAILER, ValueUtils.toValue(trailer));
 

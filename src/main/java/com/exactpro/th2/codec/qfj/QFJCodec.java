@@ -62,6 +62,7 @@ public class QFJCodec implements IPipelineCodec {
     public static final String TRAILER = "trailer";
     public static final String SOH = "\001";
     public static final String BODY_LENGTH = "9=";
+    private static final int MESSAGE_TYPE_FIELD = 35;
 
     private final DataDictionary transportDataDictionary;
     private final DataDictionary appDataDictionary;
@@ -115,10 +116,11 @@ public class QFJCodec implements IPipelineCodec {
 
     public RawMessage encodeMessage(Message message) {
 
-        String msgName = message.getMetadata().getMessageType();
-        String msgType = transportDataDictionary.getMsgType(msgName) != null ? transportDataDictionary.getMsgType(msgName) : appDataDictionary.getMsgType(msgName);
+        String enumName = message.getMetadata().getMessageType();
+        String msgType = transportDataDictionary.getValue(MESSAGE_TYPE_FIELD, enumName);
+
         if (msgType == null) {
-            throw new IllegalStateException("No such message type for message name: " + msgName);
+            throw new IllegalStateException("No such message type for message value name: " + enumName);
         }
         quickfix.Message fixMessage = getFixMessage(message.getFieldsMap(), msgType);
 

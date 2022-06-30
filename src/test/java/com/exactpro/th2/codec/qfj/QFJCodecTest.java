@@ -253,7 +253,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        messageGroup = getMessageGroup(fieldsMap, "TradeCaptureReport");
+        messageGroup = getMessageGroup(fieldsMap, "TRADE_CAPTURE_REPORT");
 
         //INITIATING MESSAGE WITHOUT HEADER
         Map<String, Value> fieldsMapNoHeader = new HashMap<>();
@@ -285,7 +285,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TradeCaptureReport");
+        messageGroupNoHeader = getMessageGroup(fieldsMapNoHeader, "TRADE_CAPTURE_REPORT");
 
         Message noPartySubIDs = Message.newBuilder()
                 .putFields("NoPartySubIDs", Value.newBuilder()
@@ -640,7 +640,7 @@ public class QFJCodecTest {
                 .setMessageValue(Message.newBuilder()
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
                         .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
-                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TradeCaptureReport").build()) //instead AE
+                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TRADE_CAPTURE_REPORT").build()) //instead AE
                         .build())
                 .build());
         fieldsMap.put("NoSides", Value.newBuilder()
@@ -658,7 +658,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        MessageGroup expected = getMessageGroup(fieldsMap, "TradeCaptureReport");
+        MessageGroup expected = getMessageGroup(fieldsMap, "TRADE_CAPTURE_REPORT");
 
         MessageGroup messageGroup = codec.decode(rawMessageGroup, new ReportingContext());
         assertEquals(expected, messageGroup);
@@ -669,7 +669,7 @@ public class QFJCodecTest {
                 .setMessageValue(Message.newBuilder()
                         .putFields("BeginString", Value.newBuilder().setSimpleValue("FIXT.1.1").build())
                         .putFields("BodyLength", Value.newBuilder().setSimpleValue(bodyLength).build())
-                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TradeCaptureReport").build()) //instead AE
+                        .putFields("MsgType", Value.newBuilder().setSimpleValue("TRADE_CAPTURE_REPORT").build()) //instead AE
                         .build())
                 .build());
         fieldsMap2.put("NoSides", Value.newBuilder()
@@ -687,7 +687,7 @@ public class QFJCodecTest {
                         .build())
                 .build());
 
-        MessageGroup forEncode = getMessageGroup(fieldsMap2, "TradeCaptureReport");
+        MessageGroup forEncode = getMessageGroup(fieldsMap2, "TRADE_CAPTURE_REPORT");
         MessageGroup result = codec.encode(forEncode, new ReportingContext());
         assertEquals(rawMessageGroup, result);
     }

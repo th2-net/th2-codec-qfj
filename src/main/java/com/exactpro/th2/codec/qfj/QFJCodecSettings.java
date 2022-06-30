@@ -23,6 +23,7 @@ public class QFJCodecSettings implements IPipelineCodecSettings {
     private boolean fixt = true;
     private boolean checkFieldsOutOfOrder = true;
     private boolean replaceValuesWithEnumNames = false;
+    private boolean useComponents = false;
 
     public boolean isFixt() {
         return fixt;
@@ -46,5 +47,13 @@ public class QFJCodecSettings implements IPipelineCodecSettings {
 
     public void setReplaceValuesWithEnumNames(boolean replaceValuesWithEnumNames) {
         this.replaceValuesWithEnumNames = replaceValuesWithEnumNames;
+    }
+
+    public boolean isUseComponents() {
+        return useComponents;
+    }
+
+    public void setUseComponents(boolean useComponents) {
+        this.useComponents = useComponents;
     }
 }

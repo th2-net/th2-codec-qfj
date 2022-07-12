@@ -181,7 +181,7 @@ class QFJCodecTest {
         }
 
         //INITIATING MESSAGE
-        messageGroup = getMessageGroup(msgBuilder, "TradeCaptureReport")
+        messageGroup = getMessageGroup(msgBuilder, "TRADE_CAPTURE_REPORT")
 
         //INITIATING MESSAGE WITHOUT HEADER
         val msgBuilderNoHeader = message().apply {
@@ -203,7 +203,7 @@ class QFJCodecTest {
                 }
             ).toValue()
         }
-        messageGroupNoHeader = getMessageGroup(msgBuilderNoHeader, "TradeCaptureReport")
+        messageGroupNoHeader = getMessageGroup(msgBuilderNoHeader, "TRADE_CAPTURE_REPORT")
     }
 
     init {

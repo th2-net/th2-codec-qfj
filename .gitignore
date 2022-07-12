@@ -5,3 +5,4 @@ gen
 shared
 *.log
 logs
+.DS_Store

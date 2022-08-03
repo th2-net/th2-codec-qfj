@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.exactpro.th2:codec:4.6.0-th2-3070-general-without-events-1963663680-SNAPSHOT'
+    implementation 'com.exactpro.th2:codec:4.7.2'
 
     implementation 'com.exactpro.th2:common:3.33.0'
 

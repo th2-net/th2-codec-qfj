@@ -20,20 +20,29 @@ repositories {
     maven {
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
     }
+    flatDir{
+        dirs 'libs'
+    }
 }
 
 dependencies {
-    implementation 'com.exactpro.th2:codec:4.1.1'
+    implementation 'com.exactpro.th2:codec:4.7.2'
 
-    implementation 'com.exactpro.th2:common:3.29.0'
+    implementation 'com.exactpro.th2:common:3.33.0'
 
-    implementation 'org.quickfixj:quickfixj-core:2.3.1'
+    implementation 'org.apache.commons:commons-collections4:4.4'
+
+//    implementation 'org.quickfixj:quickfixj-core:2.3.1'
+    compile 'org.quickfixj:quickfixj-core-3.0.0-SNAPSHOT:3.0.0-SNAPSHOT.jar'
     implementation 'org.quickfixj:quickfixj-messages-all:2.3.1'
 
-    testImplementation 'org.mockito:mockito-all:1.10.19'
-    testImplementation 'org.junit.platform:junit-platform-commons:1.8.1'
+    compileOnly 'com.google.auto.service:auto-service:1.0.1'
+    annotationProcessor 'com.google.auto.service:auto-service:1.0.1'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
+    testImplementation 'org.mockito:mockito-all:1.10.19'
+    testImplementation 'org.junit.platform:junit-platform-commons:1.8.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
 
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 }

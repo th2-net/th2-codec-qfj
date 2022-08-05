@@ -40,6 +40,7 @@ import quickfix.DataDictionary;
 import quickfix.Field;
 import quickfix.FieldMap;
 import quickfix.FieldNotFound;
+import quickfix.FieldType;
 import quickfix.Group;
 import quickfix.InvalidMessage;
 import quickfix.field.BeginString;
@@ -434,7 +435,8 @@ public class QFJCodec implements IPipelineCodec {
                               Message.Builder messageBuilder, String msgType, String componentName) {
 
         DataDictionary localDictionary = transportDataDictionary.isHeaderField(field.getField()) ||
-                transportDataDictionary.isTrailerField(field.getField()) ? transportDataDictionary : appDataDictionary;
+                transportDataDictionary.isTrailerField(field.getField()) || transportDataDictionary.isAdminMessage(msgType)
+                ? transportDataDictionary : appDataDictionary;
 
         if (dataDictionary.isGroup(msgType, field.getTag())) {
             @NotNull ListValue.Builder listValue = ValueUtils.listValue();
@@ -452,7 +454,10 @@ public class QFJCodec implements IPipelineCodec {
                 throw new IllegalArgumentException("Invalid tag \"" + dataDictionary.getFieldName(field.getField()) + "\" for message group " + fieldMap);
             }
 
-            String value = Converter.decodeFromType(localDictionary.getFieldType(field.getTag()), (String) field.getObject());
+            FieldType fieldType = Objects.requireNonNull(localDictionary.getFieldType(field.getTag()),
+                    "Tag " + field.getTag() + " is not found in " + localDictionary.getVersion());
+
+            String value = Converter.decodeFromType(fieldType, (String) field.getObject());
             if (replaceValuesWithEnumNames) {
                 putField(localDictionary, messageBuilder, field.getTag(), value);
             } else {

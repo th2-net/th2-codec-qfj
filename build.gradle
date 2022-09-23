@@ -1,9 +1,15 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.21'
     id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
     id 'com.palantir.docker' version '0.25.0'
+    id "org.owasp.dependencycheck" version "7.2.0"
+}
+
+dependencyCheck {
+    format='HTML'
+    failBuildOnCVSS=5
 }
 
 apply plugin: 'application'
@@ -26,15 +32,20 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.exactpro.th2:codec:4.7.2'
+    implementation 'com.exactpro.th2:codec:4.7.4'
 
-    implementation 'com.exactpro.th2:common:3.33.0'
+    implementation 'com.exactpro.th2:common:3.41.0'
 
     implementation 'org.apache.commons:commons-collections4:4.4'
 
 //    implementation 'org.quickfixj:quickfixj-core:2.3.1'
     compile 'org.quickfixj:quickfixj-core-3.0.0-SNAPSHOT:3.0.0-SNAPSHOT.jar'
     implementation 'org.quickfixj:quickfixj-messages-all:2.3.1'
+
+    implementation ("org.apache.mina:mina-core:2.2.1") {
+        because("fix vulnerability in <quickfixj-messages-all>")
+    }
+
 
     compileOnly 'com.google.auto.service:auto-service:1.0.1'
     annotationProcessor 'com.google.auto.service:auto-service:1.0.1'

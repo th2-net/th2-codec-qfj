@@ -32,7 +32,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.exactpro.th2:codec:4.7.4'
+    implementation 'com.exactpro.th2:codec:4.8.2-dev-3241265755-SNAPSHOT'
 
     implementation 'com.exactpro.th2:common:3.41.0'
 

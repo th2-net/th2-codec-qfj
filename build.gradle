@@ -2,7 +2,6 @@ plugins {
     id 'java'
     id 'application'
     id 'org.jetbrains.kotlin.jvm' version '1.6.21'
-    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
     id 'com.palantir.docker' version '0.25.0'
     id "org.owasp.dependencycheck" version "7.2.0"
 }
@@ -32,14 +31,16 @@ repositories {
 }
 
 dependencies {
+    api platform('com.exactpro.th2:bom:4.1.0')
     implementation 'com.exactpro.th2:codec:4.8.2-dev-3241265755-SNAPSHOT'
 
-    implementation 'com.exactpro.th2:common:3.41.0'
+    implementation 'com.exactpro.th2:common:3.44.0'
 
     implementation 'org.apache.commons:commons-collections4:4.4'
 
+
 //    implementation 'org.quickfixj:quickfixj-core:2.3.1'
-    compile 'org.quickfixj:quickfixj-core-3.0.0-SNAPSHOT:3.0.0-SNAPSHOT.jar'
+    implementation 'org.quickfixj:quickfixj-core-3.0.0-SNAPSHOT:3.0.0-SNAPSHOT.jar'
     implementation 'org.quickfixj:quickfixj-messages-all:2.3.1'
 
     implementation ("org.apache.mina:mina-core:2.2.1") {
@@ -88,8 +89,4 @@ dockerPrepare {
 
 docker {
     copySpec.from(tarTree("$buildDir/distributions/${applicationName}.tar"))
-}
-
-serviceLoader {
-    serviceInterface 'com.exactpro.th2.codec.api.IPipelineCodecFactory'
 }

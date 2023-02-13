@@ -237,7 +237,6 @@ class QFJCodecTest {
                 sequence = 11111111
                 metadataBuilder.apply {
                     protocol = "FIX"
-                    timestamp = this@QFJCodecTest.timestamp
                 }
                 putAllFields(msgBuilder.fieldsMap)
             }
@@ -251,7 +250,6 @@ class QFJCodecTest {
                 direction = Direction.SECOND
                 sequence = 11111111
                 metadataBuilder.apply {
-                    timestamp = this@QFJCodecTest.timestamp
                     protocol = "FIX"
                 }
                 body = ByteString.copyFrom(msg)

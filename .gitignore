@@ -1,0 +1,8 @@
+.gradle
+.idea
+build
+gen
+shared
+*.log
+logs
+.DS_Store

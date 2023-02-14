@@ -138,7 +138,6 @@ public class QFJCodec implements IPipelineCodec {
                         .putAllProperties(msgMetadata.getPropertiesMap())
                         .setProtocol(PROTOCOL)
                         .setId(msgMetadata.getId())
-                        .setTimestamp(msgMetadata.getTimestamp())
                         .build());
         return rawBuilder.build();
     }
@@ -310,7 +309,6 @@ public class QFJCodec implements IPipelineCodec {
                 .setParentEventId(rawMessage.getParentEventId())
                 .setMetadata(MessageMetadata.newBuilder()
                         .setId(rawMessage.getMetadata().getId())
-                        .setTimestamp(rawMessage.getMetadata().getTimestamp())
                         .setProtocol(rawMessage.getMetadata().getProtocol())
                         .setMessageType(msgName)
                         .putAllProperties(rawMessage.getMetadata().getPropertiesMap())
